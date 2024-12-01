@@ -121,8 +121,23 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function getCards($addressbookId)
     {
+        global $gDb;
+
+        $list = new ListConfiguration($gDb);
+        $list->addColumn('mem_usr_id');
+
+        $listData = new ListData();
+        $listData->setDataByConfiguration($list, ['showRolesMembers' => [$addressbookId], 'showUserUUID' => true]);
+
+        $members = $listData->getData();
+
         $result = [];
 
+        foreach ($members as $member) {
+            $usrUUID = $member['usr_uuid'];
+
+            $result[] = $this->getCard($addressbookId, $usrUUID);
+        }
         return $result;
     }
 
@@ -137,24 +152,25 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      * @param mixed  $addressBookId
      * @param string $cardUri
      *
-     * @return array
+     * @return array | bool
      */
-    public function getCard($addressBookId, $cardUri)
+    public function getCard($addressBookId, $usrUUID)
     {
-        // $stmt = $this->pdo->prepare('SELECT id, carddata, uri, lastmodified, etag, size FROM ' . $this->cardsTableName . ' WHERE addressbookid = ? AND uri = ? LIMIT 1');
-        // $stmt->execute([$addressBookId, $cardUri]);
+        global $gDb, $gProfileFields;
 
-        // $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $user = new User($gDb, $gProfileFields);
+        $userExists = $user->readDataByUuid($usrUUID);
 
-        // if (!$result) {
-        //     return false;
-        // }
+        if (!$userExists) {
+            return false;
+        }
 
-        // $result['etag'] = '"' . $result['etag'] . '"';
-        // $result['lastmodified'] = (int) $result['lastmodified'];
-
-        // return $result;
-        return [];
+        $card = [
+            'carddata' => $user->getVCard(),
+            'uri' => $user->getValue('usr_uuid'),
+            'lastmodified' => new DateTime($user->getValue('usr_timestamp_change', 'c')),
+        ];
+        return $card;
     }
 
     /**
@@ -171,22 +187,11 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function getMultipleCards($addressBookId, array $uris)
     {
-        // $query = 'SELECT id, uri, lastmodified, etag, size, carddata FROM ' . $this->cardsTableName . ' WHERE addressbookid = ? AND uri IN (';
-        // // Inserting a whole bunch of question marks
-        // $query .= implode(',', array_fill(0, count($uris), '?'));
-        // $query .= ')';
-
-        // $stmt = $this->pdo->prepare($query);
-        // $stmt->execute(array_merge([$addressBookId], $uris));
-        // $result = [];
-        // while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //     $row['etag'] = '"' . $row['etag'] . '"';
-        //     $row['lastmodified'] = (int) $row['lastmodified'];
-        //     $result[] = $row;
-        // }
-
-        // return $result;
-        return [];
+        $cards = [];
+        foreach ($uris as $uri) {
+            $cards[] = $this->getCard($addressBookId, $uri);
+        }
+        return $cards;
     }
 
     /**
