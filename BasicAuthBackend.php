@@ -1,5 +1,7 @@
 <?php
 
+include 'AdmBackendFunctions.php';
+
 /**
  * This is an authentication backend that uses a database to manage passwords.
  *
@@ -12,6 +14,8 @@ require_once($rootPath . '/adm_program/system/common.php');
 
 class BasicAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
 {
+    use AdmBackendFunctions;
+
     /**
      * Validates a username and password.
      *
@@ -31,15 +35,5 @@ class BasicAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
             return true;
         }
         return false;
-    }
-
-    private function getUserId($username)
-    {
-        global $gDb;
-        $sql = 'SELECT usr_id
-        FROM ' . TBL_USERS . '
-        WHERE UPPER(usr_login_name) = UPPER(?)';
-        $userStatement = $gDb->queryPrepared($sql, array($username));
-        return $userStatement->fetchColumn();
     }
 }
