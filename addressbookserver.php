@@ -20,9 +20,13 @@ $authBackend = new BasicAuthBackend();
 include 'AdmPrincipalBackend.php';
 $principalBackend = new AdmPrincipalBackend();
 
+include 'AdmCarddavBackend.php';
+$carddavBackend = new AdmCarddavBackend();
+
 // Setting up the directory tree //
 $nodes = [
     new Sabre\DAVACL\PrincipalCollection($principalBackend),
+    new Sabre\CardDAV\AddressBookRoot($principalBackend, $carddavBackend),
 ];
 
 // The object tree needs in turn to be passed to the server class
@@ -32,6 +36,7 @@ $server->setBaseUri($baseUri);
 // Plugins
 $server->addPlugin(new Sabre\DAV\Auth\Plugin($authBackend));
 $server->addPlugin(new Sabre\DAV\Browser\Plugin());
+$server->addPlugin(new Sabre\CardDAV\Plugin());
 
 // And off we go!
 $server->start();
