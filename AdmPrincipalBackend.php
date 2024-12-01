@@ -24,6 +24,7 @@ require_once($rootPath . '/adm_program/system/common.php');
  */
 class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupport
 {
+    use AdmBackendFunctions;
 
     /**
      * Returns a list of principals based on a prefix.
@@ -48,61 +49,25 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      *
      * @var array
      */
-    protected $fieldMap = [
-        /*
-         * This property can be used to display the users' real name.
-         */
-        '{DAV:}displayname' => [
-            'dbField' => 'displayname',
-        ],
-
-        /*
-         * This is the users' primary email-address.
-         */
-        '{http://sabredav.org/ns}email-address' => [
-            'dbField' => 'email',
-        ],
-    ];
 
     public function getPrincipalsByPrefix($prefixPath)
     {
-        global $gDb, $gProfileFields;
+        global $gDb, $gProfileFields, $gCurrentUser;
+
+        $list = new ListConfiguration($gDb);
+        $list->addColumn('usr_login_name');
+
+        $listData = new ListData();
+        $listData->setDataByConfiguration($list, []);
+
+        $members = $listData->getData();
 
         $principals = [];
-
-        $sql = 'SELECT 
-                    usr_login_name, 
-                    CONCAT (first_name.usd_value, \' \', last_name.usd_value) AS displayname,
-                    email.usd_value AS email
-                FROM ' . TBL_USERS . ' AS users
-                LEFT JOIN ' . TBL_USER_DATA . ' AS last_name
-                    ON last_name.usd_usr_id = usr_id
-                    AND last_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'LAST_NAME\', \'usf_id\')
-                LEFT JOIN ' . TBL_USER_DATA . ' AS first_name
-                    ON first_name.usd_usr_id = usr_id
-                    AND first_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'FIRST_NAME\', \'usf_id\')
-                LEFT JOIN ' . TBL_USER_DATA . ' AS email
-                    ON email.usd_usr_id = usr_id
-                    AND email.usd_usf_id = ? -- $gProfileFields->getProperty(\'EMAIL\', \'usf_id\')
-                WHERE usr_login_name IS NOT NULL';
-        $queryParams = [
-            $gProfileFields->getProperty('LAST_NAME', 'usf_id'),
-            $gProfileFields->getProperty('FIRST_NAME', 'usf_id'),
-            $gProfileFields->getProperty('EMAIL', 'usf_id'),
-        ];
-        $result = $gDb->queryPrepared($sql, $queryParams);
-        // echo $result->fetchAll(PDO::FETCH_ASSOC)[0]['usr_login_name'];
-
-        while ($row = $result->fetch(\PDO::FETCH_ASSOC)) {
-            $principal = [
-                'uri' => $row['usr_login_name'],
-            ];
-            foreach ($this->fieldMap as $key => $value) {
-                if ($row[$value['dbField']]) {
-                    $principal[$key] = $row[$value['dbField']];
-                }
+        foreach ($members as $member) {
+            if (!$member['usr_login_name']) {
+                continue;
             }
-            $principals[] = $principal;
+            $principals[] = $this->getPrincipalByPath($prefixPath . '/' . $member['usr_login_name']);
         }
         return $principals;
     }
@@ -120,45 +85,15 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
     {
         global $gDb, $gProfileFields;
 
-        $usrId = explode('/', $path)[1]; // TODO review this
+        $usrLoginName = explode('/', $path)[1]; // TODO review this
 
-        $sql = 'SELECT 
-                    usr_login_name, 
-                    CONCAT (first_name.usd_value, \' \', last_name.usd_value) AS displayname,
-                    email.usd_value AS email
-                FROM ' . TBL_USERS . ' AS users
-                LEFT JOIN ' . TBL_USER_DATA . ' AS last_name
-                    ON last_name.usd_usr_id = usr_id
-                    AND last_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'LAST_NAME\', \'usf_id\')
-                LEFT JOIN ' . TBL_USER_DATA . ' AS first_name
-                    ON first_name.usd_usr_id = usr_id
-                    AND first_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'FIRST_NAME\', \'usf_id\')
-                LEFT JOIN ' . TBL_USER_DATA . ' AS email
-                    ON email.usd_usr_id = usr_id
-                    AND email.usd_usf_id = ? -- $gProfileFields->getProperty(\'EMAIL\', \'usf_id\')
-                WHERE usr_login_name = ? -- $path';
-        $queryParams = [
-            $gProfileFields->getProperty('LAST_NAME', 'usf_id'),
-            $gProfileFields->getProperty('FIRST_NAME', 'usf_id'),
-            $gProfileFields->getProperty('EMAIL', 'usf_id'),
-            $usrId,
-
-        ];
-        $result = $gDb->queryPrepared($sql, $queryParams);
-
-        $row = $result->fetch(\PDO::FETCH_ASSOC);
-        if (!$row) {
-            return [];
-        }
+        $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
 
         $principal = [
-            'uri' => $row['usr_login_name'],
+            'uri' => $user->getValue('usr_login_name'),
+            '{DAV:}displayname' => $user->getValue('FIRST_NAME') . ' ' . $user->getValue('LAST_NAME'),
+            '{http://sabredav.org/ns}email-address' => $user->getValue('EMAIL'),
         ];
-        foreach ($this->fieldMap as $key => $value) {
-            if ($row[$value['dbField']]) {
-                $principal[$key] = $row[$value['dbField']];
-            }
-        }
 
         return $principal;
     }
