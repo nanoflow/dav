@@ -70,9 +70,40 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
 
         $principals = [];
 
-        $principals[] = [
-            'uri' => 'principal_1',
+        $sql = 'SELECT 
+                    usr_login_name, 
+                    CONCAT (first_name.usd_value, \' \', last_name.usd_value) AS displayname,
+                    email.usd_value AS email
+                FROM ' . TBL_USERS . ' AS users
+                LEFT JOIN ' . TBL_USER_DATA . ' AS last_name
+                    ON last_name.usd_usr_id = usr_id
+                    AND last_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'LAST_NAME\', \'usf_id\')
+                LEFT JOIN ' . TBL_USER_DATA . ' AS first_name
+                    ON first_name.usd_usr_id = usr_id
+                    AND first_name.usd_usf_id = ? -- $gProfileFields->getProperty(\'FIRST_NAME\', \'usf_id\')
+                LEFT JOIN ' . TBL_USER_DATA . ' AS email
+                    ON email.usd_usr_id = usr_id
+                    AND email.usd_usf_id = ? -- $gProfileFields->getProperty(\'EMAIL\', \'usf_id\')
+                WHERE usr_login_name IS NOT NULL';
+        $queryParams = [
+            $gProfileFields->getProperty('LAST_NAME', 'usf_id'),
+            $gProfileFields->getProperty('FIRST_NAME', 'usf_id'),
+            $gProfileFields->getProperty('EMAIL', 'usf_id'),
         ];
+        $result = $gDb->queryPrepared($sql, $queryParams);
+        // echo $result->fetchAll(PDO::FETCH_ASSOC)[0]['usr_login_name'];
+
+        while ($row = $result->fetch(\PDO::FETCH_ASSOC)) {
+            $principal = [
+                'uri' => $row['usr_login_name'],
+            ];
+            foreach ($this->fieldMap as $key => $value) {
+                if ($row[$value['dbField']]) {
+                    $principal[$key] = $row[$value['dbField']];
+                }
+            }
+            $principals[] = $principal;
+        }
         return $principals;
     }
 
