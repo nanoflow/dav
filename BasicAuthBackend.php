@@ -29,9 +29,13 @@ class BasicAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
      */
     public function validateUserPass($username, $password)
     {
-        global $gDb, $gProfileFields;
+        global $gDb, $gProfileFields, $gCurrentUser, $gCurrentUserId, $gCurrentUserUUID;
         $user = new User($gDb, $gProfileFields, $this->getUserId($username));
+
         if ($user->checkLogin($password)) {
+            $gCurrentUser = $user;
+            $gCurrentUserId = $gCurrentUser->getValue('usr_id');
+            $gCurrentUserUUID = $gCurrentUser->getValue('usr_uuid');
             return true;
         }
         return false;
