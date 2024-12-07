@@ -1,5 +1,9 @@
 <?php
 
+if (in_array($_SERVER['REQUEST_URI'], ['/', '/.well-known/carddav', '/.well-known/caldav'])) {
+    $_SERVER['REQUEST_URI'] = '/';
+}
+
 /*
 
 Addressbook/CardDAV server example
