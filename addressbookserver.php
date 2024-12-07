@@ -8,7 +8,7 @@ This server features CardDAV support
 
 */
 
-$baseUri = '/adm_plugins/carddav/addressbookserver.php'; // TODO: check this
+$baseUri = '/'; 
 
 // Autoloader
 require_once 'vendor/autoload.php';
