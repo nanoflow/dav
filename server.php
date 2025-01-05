@@ -12,7 +12,7 @@ This server features CardDAV support
 
 */
 
-$baseUri = '/'; 
+$baseUri = '/adm_plugins/dav/'; 
 
 // Autoloader
 require_once 'vendor/autoload.php';

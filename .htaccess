@@ -1,2 +1,2 @@
 RewriteEngine on
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
+RewriteRule .* server.php [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},L]
