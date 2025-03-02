@@ -9,7 +9,7 @@ require_once($rootPath . '/adm_program/system/common.php');
 
 trait AdmBackendFunctions
 {
-    protected function getUserId($username)
+    protected function getUserId($username): int
     {
         global $gDb;
         $sql = 'SELECT usr_id
