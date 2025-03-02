@@ -23,7 +23,8 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 require_once 'vendor/autoload.php';
 
 // Backends
-$authBackend = new Sabre\DAV\Auth\Backend\PDO($pdo);
+include 'AdmBasicAuthBackend.php';
+$authBackend = new AdmBasicAuthBackend();
 $principalBackend = new Sabre\DAVACL\PrincipalBackend\PDO($pdo);
 $carddavBackend = new Sabre\CardDAV\Backend\PDO($pdo);
 $caldavBackend    = new Sabre\CalDAV\Backend\PDO($pdo);
