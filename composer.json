@@ -1,0 +1,12 @@
+{
+    "name": "admidio/sabre",
+    "type": "project",
+    "require": {
+        "sabre/dav": "^4.7"
+    },
+    "authors": [
+        {
+            "name": "Florian Biebl"
+        }
+    ]
+}
