@@ -189,7 +189,7 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function getGroupMemberSet($principal)
     {
-        throw new NotImplemented('Getting group principals is not yet supported');
+        return [];
     }
 
     /**

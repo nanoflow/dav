@@ -36,21 +36,22 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
 
         $user = new User($gDb, $gProfileFields, $this->getUserId($principalUri));
         $user->checkRolesRight();
-        $visibleRoleIds = $user->getRolesViewMemberships();
+        $visibleRoleUuids = $user->getRolesViewMemberships();
 
         $addressBooks = [];
 
-        if ($visibleRoleIds) {
-            foreach ($visibleRoleIds as $roleId) {
-                $role = new Role($gDb, $roleId);
+        if ($visibleRoleUuids) {
+            foreach ($visibleRoleUuids as $roleUuid) {
+                $role = new Role($gDb);
+                $role->readDataByUuid($roleUuid);
                 $isEventRole = $role->getValue('cat_name_intern') === 'EVENTS';
                 if ($isEventRole) {
                     continue;
                 }
                 $entry = [
-                    'id' => $role->getValue('rol_id'),
-                    'uri' => $role->getValue('rol_id'),
-                    'principaluri' => $principalUri,
+                    'id' => $role->getValue('rol_uuid'),
+                    'uri' => $role->getValue('rol_uuid'),
+                    'principaluri' => 'principals/' . $principalUri,
                     '{DAV:}displayname' => $role->getValue('rol_name'),
                     '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_name'),
                     // '{http://calendarserver.org/ns/}getctag' => 'ctag',
@@ -75,9 +76,9 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * Read the PropPatch documentation for more info and examples.
      *
-     * @param string $addressBookId
+     * @param string $addressBookUuid
      */
-    public function updateAddressBook($addressBookId, PropPatch $propPatch)
+    public function updateAddressBook($addressBookUuid, PropPatch $propPatch)
     {
         throw new NotImplemented('Updating addressbooks is not yet supported');
     }
@@ -98,9 +99,9 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
     /**
      * Deletes an entire addressbook and all its contents.
      *
-     * @param int $addressBookId
+     * @param int $addressBookUuid
      */
-    public function deleteAddressBook($addressBookId)
+    public function deleteAddressBook($addressBookUuid)
     {
         throw new NotImplemented('Deleting addressbooks is not yet supported');
     }
@@ -121,11 +122,11 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      * calculating them. If they are specified, you can also omit carddata.
      * This may speed up certain requests, especially with large cards.
      *
-     * @param mixed $addressbookId
+     * @param mixed $addressbookUuid
      *
      * @return array
      */
-    public function getCards($addressbookId)
+    public function getCards($addressbookUuid)
     {
         global $gDb;
 
@@ -133,16 +134,24 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
         $list->addColumn('mem_usr_id');
 
         $listData = new ListData();
-        $listData->setDataByConfiguration($list, ['showRolesMembers' => [$addressbookId], 'showUserUUID' => true]);
+        $listData->setDataByConfiguration($list, ['showRolesMembers' => [$addressbookUuid], 'showUserUUID' => true]);
 
         $members = $listData->getData();
 
         $result = [];
 
         foreach ($members as $member) {
-            $usrUUID = $member['usr_uuid'];
+            // $usrUUID = $member['usr_uuid'];
 
-            $result[] = $this->getCard($addressbookId, $usrUUID);
+            $entry = [
+                'id' => 1,
+                'uri' => $member['usr_uuid'] . '.vcf',
+                'lastmodified' => time(),
+                'etag' => '"' . md5($member['usr_uuid']) . '"',
+                'size' => strlen($member['usr_uuid'])
+            ];
+            // throw new ErrorException(json_encode($entry));
+            $result[] = $entry;
         }
         return $result;
     }
@@ -155,14 +164,16 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * If the card does not exist, you must return false.
      *
-     * @param mixed  $addressBookId
+     * @param mixed  $addressBookUuid
      * @param string $cardUri
      *
      * @return array | bool
      */
-    public function getCard($addressBookId, $usrUUID)
+    public function getCard($addressBookUuid, $uri)
     {
         global $gDb, $gProfileFields;
+
+        $usrUUID = str_replace('.vcf', '', $uri);
 
         $user = new User($gDb, $gProfileFields);
         $userExists = $user->readDataByUuid($usrUUID);
@@ -171,11 +182,17 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
             return false;
         }
 
+        $carddata = $user->getVCard();
+
         $card = [
-            'carddata' => $user->getVCard(),
-            'uri' => $user->getValue('usr_uuid'),
-            'lastmodified' => new DateTime($user->getValue('usr_timestamp_change', 'c')),
+            'carddata' => $carddata,
+            'uri' => $user->getValue('usr_uuid') . '.vcf',
+            'lastmodified' => time(),//$user->getValue('usr_timestamp_change', 'c')),
+            'etag' => '"' . md5($carddata) . '"',
+            'size' => strlen($carddata)
         ];
+        // throw new ErrorException(json_encode($card));
+
         return $card;
     }
 
@@ -187,15 +204,15 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * If the backend supports this, it may allow for some speed-ups.
      *
-     * @param mixed $addressBookId
+     * @param mixed $addressBookUuid
      *
      * @return array
      */
-    public function getMultipleCards($addressBookId, array $uris)
+    public function getMultipleCards($addressBookUuid, array $uris)
     {
         $cards = [];
         foreach ($uris as $uri) {
-            $cards[] = $this->getCard($addressBookId, $uri);
+            $cards[] = $this->getCard($addressBookUuid, $uri);
         }
         return $cards;
     }
@@ -220,13 +237,13 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * If you don't return an ETag, you can just return null.
      *
-     * @param mixed  $addressBookId
+     * @param mixed  $addressBookUuid
      * @param string $cardUri
      * @param string $cardData
      *
      * @return string|null
      */
-    public function createCard($addressBookId, $cardUri, $cardData)
+    public function createCard($addressBookUuid, $cardUri, $cardData)
     {
         throw new NotImplemented('Creating cards is not yet supported');
     }
@@ -251,13 +268,13 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * If you don't return an ETag, you can just return null.
      *
-     * @param mixed  $addressBookId
+     * @param mixed  $addressBookUuid
      * @param string $cardUri
      * @param string $cardData
      *
      * @return string|null
      */
-    public function updateCard($addressBookId, $cardUri, $cardData)
+    public function updateCard($addressBookUuid, $cardUri, $cardData)
     {
         throw new NotImplemented('Updating cards is not yet supported');
     }
@@ -265,12 +282,12 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
     /**
      * Deletes a card.
      *
-     * @param mixed  $addressBookId
+     * @param mixed  $addressBookUuid
      * @param string $cardUri
      *
      * @return bool
      */
-    public function deleteCard($addressBookId, $cardUri)
+    public function deleteCard($addressBookUuid, $cardUri)
     {
         throw new NotImplemented('Deleting cards is not yet supported');
     }
@@ -325,18 +342,18 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * The limit is 'suggestive'. You are free to ignore it.
      *
-     * @param string $addressBookId
+     * @param string $addressBookUuid
      * @param string $syncToken
      * @param int    $syncLevel
      * @param int    $limit
      *
      * @return array|null
      */
-    public function getChangesForAddressBook($addressBookId, $syncToken, $syncLevel, $limit = null)
+    public function getChangesForAddressBook($addressBookUuid, $syncToken, $syncLevel, $limit = null)
     {
         // // Current synctoken
         // $stmt = $this->pdo->prepare('SELECT synctoken FROM ' . $this->addressBooksTableName . ' WHERE id = ?');
-        // $stmt->execute([$addressBookId]);
+        // $stmt->execute([$addressBookUuid]);
         // $currentToken = $stmt->fetchColumn(0);
 
         // if (is_null($currentToken)) {
@@ -358,7 +375,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
 
         //     // Fetching all changes
         //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$syncToken, $currentToken, $addressBookId]);
+        //     $stmt->execute([$syncToken, $currentToken, $addressBookUuid]);
 
         //     $changes = [];
 
@@ -385,7 +402,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
         //     // No synctoken supplied, this is the initial sync.
         //     $query = 'SELECT uri FROM ' . $this->cardsTableName . ' WHERE addressbookid = ?';
         //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$addressBookId]);
+        //     $stmt->execute([$addressBookUuid]);
 
         //     $result['added'] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         // }
