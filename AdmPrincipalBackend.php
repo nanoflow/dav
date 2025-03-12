@@ -90,13 +90,13 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
     {
         global $gDb, $gProfileFields;
 
-        $usrLoginName = explode('/', $path)[1]; // TODO review this
+        $usrLoginName = explode(separator: '/', string: $path)[1]; // TODO review this
 
         $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
 
         $principal = [
             'id' => $user->getValue('usr_uuid'),
-            'uri' => $user->getValue('usr_login_name'),
+            'uri' => 'principals/' . $user->getValue('usr_login_name'),
             '{DAV:}displayname' => $user->getValue('FIRST_NAME') . ' ' . $user->getValue('LAST_NAME'),
             '{http://sabredav.org/ns}email-address' => $user->getValue('EMAIL'),
         ];

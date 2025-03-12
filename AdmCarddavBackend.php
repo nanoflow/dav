@@ -33,8 +33,9 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
     public function getAddressBooksForUser($principalUri)
     {
         global $gDb, $gProfileFields;
-
-        $user = new User($gDb, $gProfileFields, $this->getUserId($principalUri));
+        
+        $usrLoginName = str_replace('principals/', '', $principalUri);
+        $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
         $user->checkRolesRight();
         $visibleRoleUuids = $user->getRolesViewMemberships();
 
@@ -51,7 +52,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
                 $entry = [
                     'id' => $role->getValue('rol_uuid'),
                     'uri' => $role->getValue('rol_uuid'),
-                    'principaluri' => 'principals/' . $principalUri,
+                    'principaluri' => $principalUri,
                     '{DAV:}displayname' => $role->getValue('rol_name'),
                     '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_name'),
                     // '{http://calendarserver.org/ns/}getctag' => 'ctag',
