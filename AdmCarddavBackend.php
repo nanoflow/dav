@@ -33,7 +33,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
     public function getAddressBooksForUser($principalUri)
     {
         global $gDb, $gProfileFields;
-        
+
         $usrLoginName = str_replace('principals/', '', $principalUri);
         $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
         $user->checkRolesRight();
@@ -49,16 +49,24 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
                 if ($isEventRole) {
                     continue;
                 }
-                $entry = [
-                    'id' => $role->getValue('rol_uuid'),
-                    'uri' => $role->getValue('rol_uuid'),
+                $roleUuid = $role->getValue('rol_uuid');
+
+                // Current synctoken
+                $roleId = $role->getValue('rol_id');
+                $lastMembershipChange = $this->getLastMembershipChangeDate($roleId)->getTimestamp();
+                $lastCardChange = $this->getLastCardChangeDate($roleId)->getTimestamp();
+                $currentSyncToken = max($lastMembershipChange, $lastCardChange);
+
+                $addressBook = [
+                    'id' => $roleUuid,
+                    'uri' => $roleUuid,
                     'principaluri' => $principalUri,
                     '{DAV:}displayname' => $role->getValue('rol_name'),
-                    '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_name'),
-                    // '{http://calendarserver.org/ns/}getctag' => 'ctag',
-                    // '{http://sabredav.org/ns}sync-token' => '0',
+                    '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_description'),
+                    '{http://calendarserver.org/ns/}getctag' => md5($roleUuid . $currentSyncToken),
+                    '{http://sabredav.org/ns}sync-token' => $currentSyncToken,
                 ];
-                $addressBooks[] = $entry;
+                $addressBooks[] = $addressBook;
             }
         }
 
@@ -81,7 +89,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function updateAddressBook($addressBookUuid, PropPatch $propPatch)
     {
-        throw new NotImplemented('Updating addressbooks is not yet supported');
+        throw new NotImplemented('Updating addressbooks is not supported');
     }
 
     /**
@@ -94,7 +102,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function createAddressBook($principalUri, $url, array $properties)
     {
-        throw new NotImplemented('Creating addressbooks is not yet supported');
+        throw new NotImplemented('Creating addressbooks is not supported');
     }
 
     /**
@@ -104,7 +112,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function deleteAddressBook($addressBookUuid)
     {
-        throw new NotImplemented('Deleting addressbooks is not yet supported');
+        throw new NotImplemented('Deleting addressbooks is not supported');
     }
 
     /**
@@ -142,17 +150,11 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
         $result = [];
 
         foreach ($members as $member) {
-            // $usrUUID = $member['usr_uuid'];
-
-            $entry = [
-                'id' => 1,
-                'uri' => $member['usr_uuid'] . '.vcf',
-                'lastmodified' => time(),
-                'etag' => '"' . md5($member['usr_uuid']) . '"',
-                'size' => strlen($member['usr_uuid'])
-            ];
-            // throw new ErrorException(json_encode($entry));
-            $result[] = $entry;
+            $usrUuid = $member['usr_uuid'];
+            $card = $this->getCard($addressbookUuid, $usrUuid);
+            if ($card) {
+                $result[] = $card;
+            }
         }
         return $result;
     }
@@ -178,21 +180,21 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
 
         $user = new User($gDb, $gProfileFields);
         $userExists = $user->readDataByUuid($usrUUID);
+        $user->getRoleMemberships();
+        $userHasRole = $user->isMemberOfRole($this->getRoleId($addressBookUuid));
 
-        if (!$userExists) {
+        if (!$userExists or !$userHasRole) {
             return false;
         }
 
         $carddata = $user->getVCard();
+        $lastModified = $user->getValue('usr_timestamp_change') ?: $user->getValue('usr_timestamp_create');
 
         $card = [
             'carddata' => $carddata,
             'uri' => $user->getValue('usr_uuid') . '.vcf',
-            'lastmodified' => time(),//$user->getValue('usr_timestamp_change', 'c')),
-            'etag' => '"' . md5($carddata) . '"',
-            'size' => strlen($carddata)
+            'lastmodified' => strtotime($lastModified)
         ];
-        // throw new ErrorException(json_encode($card));
 
         return $card;
     }
@@ -246,7 +248,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function createCard($addressBookUuid, $cardUri, $cardData)
     {
-        throw new NotImplemented('Creating cards is not yet supported');
+        throw new NotImplemented('Creating cards is not supported');
     }
 
     /**
@@ -290,7 +292,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function deleteCard($addressBookUuid, $cardUri)
     {
-        throw new NotImplemented('Deleting cards is not yet supported');
+        throw new NotImplemented('Deleting cards is not supported');
     }
 
     /**
@@ -352,63 +354,42 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function getChangesForAddressBook($addressBookUuid, $syncToken, $syncLevel, $limit = null)
     {
-        // // Current synctoken
-        // $stmt = $this->pdo->prepare('SELECT synctoken FROM ' . $this->addressBooksTableName . ' WHERE id = ?');
-        // $stmt->execute([$addressBookUuid]);
-        // $currentToken = $stmt->fetchColumn(0);
+        global $gDb;
 
-        // if (is_null($currentToken)) {
-        //     return null;
-        // }
+        $role = new Role($gDb);
+        $role->readDataByUuid($addressBookUuid);
+        $roleId = $role->getValue('rol_id');
 
-        // $result = [
-        //     'syncToken' => $currentToken,
-        //     'added' => [],
-        //     'modified' => [],
-        //     'deleted' => [],
-        // ];
+        $lastMembershipChange = $this->getLastMembershipChangeDate($role->getValue('rol_id'))->getTimestamp();
+        $lastCardChange = $this->getLastCardChangeDate($role->getValue('rol_id'))->getTimestamp();
 
-        // if ($syncToken) {
-        //     $query = 'SELECT uri, operation FROM ' . $this->addressBookChangesTableName . ' WHERE synctoken >= ? AND synctoken < ? AND addressbookid = ? ORDER BY synctoken';
-        //     if ($limit > 0) {
-        //         $query .= ' LIMIT ' . (int) $limit;
-        //     }
+        // Current synctoken
+        $currentToken = max($lastMembershipChange, $lastCardChange);
 
-        //     // Fetching all changes
-        //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$syncToken, $currentToken, $addressBookUuid]);
+        if (is_null($currentToken)) {
+            return null;
+        }
 
-        //     $changes = [];
+        $result = [
+            'syncToken' => $currentToken,
+            'added' => [],
+            'modified' => [],
+            'deleted' => [],
+        ];
 
-        //     // This loop ensures that any duplicates are overwritten, only the
-        //     // last change on a node is relevant.
-        //     while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //         $changes[$row['uri']] = $row['operation'];
-        //     }
+        if ($syncToken) {
+            if ($syncToken < $lastMembershipChange) {
+                $result['added'] = $this->getAddedUsersToRoleSince($roleId, $syncToken);
+                $result['deleted'] = $this->getDeletedUsersFromRoleSince($roleId, $syncToken);
+            }
+            if ($syncToken < $lastCardChange) {
+                $result['modified'] = $this->getModifiedUsersInRoleSince($roleId, $syncToken);
+            }
+        } else {
+            // No synctoken supplied, this is the initial sync.
+            $result['added'] = $this->getAddedUsersToRoleSince($roleId, 0);
+        }
 
-        //     foreach ($changes as $uri => $operation) {
-        //         switch ($operation) {
-        //             case 1:
-        //                 $result['added'][] = $uri;
-        //                 break;
-        //             case 2:
-        //                 $result['modified'][] = $uri;
-        //                 break;
-        //             case 3:
-        //                 $result['deleted'][] = $uri;
-        //                 break;
-        //         }
-        //     }
-        // } else {
-        //     // No synctoken supplied, this is the initial sync.
-        //     $query = 'SELECT uri FROM ' . $this->cardsTableName . ' WHERE addressbookid = ?';
-        //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$addressBookUuid]);
-
-        //     $result['added'] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        // }
-
-        // return $result;
-        return [];
+        return $result;
     }
 }
