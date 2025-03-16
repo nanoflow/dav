@@ -366,7 +366,7 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
         // Current synctoken
         $currentToken = max($lastMembershipChange, $lastCardChange);
 
-        if (is_null($currentToken)) {
+        if (is_null($currentToken) || $currentToken < $syncToken) {
             return null;
         }
 
