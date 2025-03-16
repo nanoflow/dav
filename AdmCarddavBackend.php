@@ -52,10 +52,10 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
                 $roleUuid = $role->getValue('rol_uuid');
 
                 // Current synctoken
-                $roleId = $role->getValue('rol_id');
-                $lastMembershipChange = $this->getLastMembershipChangeDate($roleId)->getTimestamp();
-                $lastCardChange = $this->getLastCardChangeDate($roleId)->getTimestamp();
-                $currentSyncToken = max($lastMembershipChange, $lastCardChange);
+                // $roleId = $role->getValue('rol_id');
+                // $lastMembershipChange = $this->getLastMembershipChangeDate($roleId)->getTimestamp();
+                // $lastCardChange = $this->getLastCardChangeDate($roleId)->getTimestamp();
+                // $currentSyncToken = max($lastMembershipChange, $lastCardChange);
 
                 $addressBook = [
                     'id' => $roleUuid,
@@ -63,8 +63,8 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
                     'principaluri' => $principalUri,
                     '{DAV:}displayname' => $role->getValue('rol_name'),
                     '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_description'),
-                    '{http://calendarserver.org/ns/}getctag' => md5($roleUuid . $currentSyncToken),
-                    '{http://sabredav.org/ns}sync-token' => $currentSyncToken,
+                    // '{http://calendarserver.org/ns/}getctag' => md5($roleUuid . $currentSyncToken),
+                    // '{http://sabredav.org/ns}sync-token' => $currentSyncToken,
                 ];
                 $addressBooks[] = $addressBook;
             }
@@ -354,42 +354,42 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function getChangesForAddressBook($addressBookUuid, $syncToken, $syncLevel, $limit = null)
     {
-        global $gDb;
+        // global $gDb;
 
-        $role = new Role($gDb);
-        $role->readDataByUuid($addressBookUuid);
-        $roleId = $role->getValue('rol_id');
+        // $role = new Role($gDb);
+        // $role->readDataByUuid($addressBookUuid);
+        // $roleId = $role->getValue('rol_id');
 
-        $lastMembershipChange = $this->getLastMembershipChangeDate($role->getValue('rol_id'))->getTimestamp();
-        $lastCardChange = $this->getLastCardChangeDate($role->getValue('rol_id'))->getTimestamp();
+        // $lastMembershipChange = $this->getLastMembershipChangeDate($role->getValue('rol_id'))->getTimestamp();
+        // $lastCardChange = $this->getLastCardChangeDate($role->getValue('rol_id'))->getTimestamp();
 
-        // Current synctoken
-        $currentToken = max($lastMembershipChange, $lastCardChange);
+        // // Current synctoken
+        // $currentToken = max($lastMembershipChange, $lastCardChange);
 
-        if (is_null($currentToken) || $currentToken < $syncToken) {
+        // if (is_null($currentToken) || $currentToken < $syncToken) {
             return null;
-        }
+        // }
 
-        $result = [
-            'syncToken' => $currentToken,
-            'added' => [],
-            'modified' => [],
-            'deleted' => [],
-        ];
+        // $result = [
+        //     'syncToken' => $currentToken,
+        //     'added' => [],
+        //     'modified' => [],
+        //     'deleted' => [],
+        // ];
 
-        if ($syncToken) {
-            if ($syncToken < $lastMembershipChange) {
-                $result['added'] = $this->getAddedUsersToRoleSince($roleId, $syncToken);
-                $result['deleted'] = $this->getDeletedUsersFromRoleSince($roleId, $syncToken);
-            }
-            if ($syncToken < $lastCardChange) {
-                $result['modified'] = $this->getModifiedUsersInRoleSince($roleId, $syncToken);
-            }
-        } else {
-            // No synctoken supplied, this is the initial sync.
-            $result['added'] = $this->getAddedUsersToRoleSince($roleId, 0);
-        }
+        // if ($syncToken) {
+        //     if ($syncToken < $lastMembershipChange) {
+        //         $result['added'] = $this->getAddedUsersToRoleSince($roleId, $syncToken);
+        //         $result['deleted'] = $this->getDeletedUsersFromRoleSince($roleId, $syncToken);
+        //     }
+        //     if ($syncToken < $lastCardChange) {
+        //         $result['modified'] = $this->getModifiedUsersInRoleSince($roleId, $syncToken);
+        //     }
+        // } else {
+        //     // No synctoken supplied, this is the initial sync.
+        //     $result['added'] = $this->getAddedUsersToRoleSince($roleId, 0);
+        // }
 
-        return $result;
+        // return $result;
     }
 }
