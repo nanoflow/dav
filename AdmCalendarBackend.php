@@ -66,9 +66,9 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getCalendarsForUser($principalUri)
     {
-        global $gDb, $gProfileFields;
+        global $gDb;
 
-        $user = new User($gDb, $gProfileFields, $this->getUserId($principalUri));
+        $user = new User($gDb, userId: $this->getUserId($principalUri));
         $user->checkRolesRight();
         $visibleCalendarIds = $user->getAllVisibleCategories('EVT');
 

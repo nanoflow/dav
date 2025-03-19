@@ -57,7 +57,7 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
 
     public function getPrincipalsByPrefix($prefixPath)
     {
-        global $gDb, $gProfileFields, $gCurrentUser;
+        global $gDb;
 
         $list = new ListConfiguration($gDb);
         $list->addColumn('usr_login_name');
@@ -88,11 +88,11 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function getPrincipalByPath($path)
     {
-        global $gDb, $gProfileFields;
+        global $gDb;
 
         $usrLoginName = explode(separator: '/', string: $path)[1]; // TODO review this
 
-        $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
+        $user = new User($gDb, userId: $this->getUserId($usrLoginName));
 
         $principal = [
             'id' => $user->getValue('usr_uuid'),
@@ -201,9 +201,9 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function getGroupMembership($principal)
     {
-        // global $gDb, $gProfileFields;
+        // global $gDb;
 
-        // $user = new User($gDb, $gProfileFields, $this->getUserId($principal));
+        // $user = new User($gDb, userId: $this->getUserId($principal));
         // $roleIds = $user->getRoleMemberships();
         $roles = [];
         // foreach ($roleIds as $roleId) {

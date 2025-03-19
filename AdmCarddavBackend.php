@@ -32,10 +32,10 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      */
     public function getAddressBooksForUser($principalUri)
     {
-        global $gDb, $gProfileFields;
+        global $gDb;
 
         $usrLoginName = str_replace('principals/', '', $principalUri);
-        $user = new User($gDb, $gProfileFields, $this->getUserId($usrLoginName));
+        $user = new User($gDb, userId: $this->getUserId($usrLoginName));
         $user->checkRolesRight();
         $visibleRoleUuids = $user->getRolesViewMemberships();
 
@@ -172,13 +172,13 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
      *
      * @return array | bool
      */
-    public function getCard($addressBookUuid, $uri)
+    public function getCard($addressBookUuid, $cardUri)
     {
-        global $gDb, $gProfileFields;
+        global $gDb;
 
-        $usrUUID = str_replace('.vcf', '', $uri);
+        $usrUUID = str_replace('.vcf', '', $cardUri);
 
-        $user = new User($gDb, $gProfileFields);
+        $user = new User($gDb);
         $userExists = $user->readDataByUuid($usrUUID);
         $user->getRoleMemberships();
         $userHasRole = $user->isMemberOfRole($this->getRoleId($addressBookUuid));
