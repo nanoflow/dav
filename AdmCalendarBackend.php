@@ -294,14 +294,13 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         $eventsResult = $events->getDataSet();
 
         $result = [];
-        foreach ($eventsResult['recordset'] as $row) {
-            $lastModified = $row['dat_timestamp_change'] ?? $row['dat_timestamp_create'];
+        foreach ($eventsResult['recordset'] as $event) {
+            $lastModified = $event['dat_timestamp_change'] ?? $event['dat_timestamp_create'];
             $result[] = [
-                'id' => $row['dat_id'],
-                'uri' => $row['dat_uuid'] . '.ics',
+                'id' => $event['dat_id'],
+                'uri' => $event['dat_uuid'] . '.ics',
                 'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
                 'etag' => md5($lastModified),
-                'size' => 0,
                 'component' => strtolower('VEVENT'),
             ];
         }
@@ -352,7 +351,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
             'uri' => $event['dat_uuid'] . '.ics',
             'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
             'etag' => md5($lastModified),
-            'size' => 0,
             'calendardata' => strval($events->getICalContent()),
             'component' => strtolower('VEVENT'),
         ];
