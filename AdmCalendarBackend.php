@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 
+use Admidio\Events\Entity\Event;
 use Sabre\CalDAV\Backend\AbstractBackend;
 use Sabre\CalDAV\Backend\SyncSupport;
 use Sabre\CalDAV\Backend\SubscriptionSupport;
@@ -83,9 +84,9 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
             //     }
 
             $calendar = [
-                'id' => [(int) $row['cat_id'], (int) 0],
+                'id' => [$row['cat_name'], (int) 0],
                 'uri' => $row['cat_name'],
-                'principaluri' => $row['cat_uuid'],
+                'principaluri' => $principalUri,
                 // '{'.CalDAV\Plugin::NS_CALENDARSERVER.'}getctag' => 'http://sabre.io/ns/sync/'.($row['synctoken'] ? $row['synctoken'] : '0'),
                 // '{http://sabredav.org/ns}sync-token' => $row['synctoken'] ? $row['synctoken'] : '0',
                 // '{'.Plugin::NS_CALDAV.'}supported-calendar-component-set' => new SupportedCalendarComponentSet($components),
@@ -102,7 +103,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
 
             //         // read-only is for backwards compatibility. Might go away in
             //         // the future.
-                    $calendar['read-only'] = true;
+            $calendar['read-only'] = true;
             //     }
 
             //     foreach ($this->propertyMap as $xmlName => $dbName) {
@@ -318,6 +319,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         list($calendarId, $instanceId) = $calendarId;
 
         $events = new ModuleEvents();
+        $events->setCalendarNames(arrCalendarNames: [$calendarId]);
         $eventsResult = $events->getDataSet();
 
         $result = [];
@@ -325,7 +327,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
             $lastModified = $row['dat_timestamp_change'] ?? $row['dat_timestamp_create'];
             $result[] = [
                 'id' => $row['dat_id'],
-                'uri' => $row['dat_uuid'],
+                'uri' => $row['dat_uuid'] . '.ics',
                 'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
                 'etag' => md5($lastModified),
                 'size' => 0,
@@ -360,22 +362,28 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         if (!is_array($calendarId)) {
             throw new \InvalidArgumentException('The value passed to $calendarId is expected to be an array with a calendarId and an instanceId');
         }
-        list($calendarId, $instanceId) = $calendarId;
-        $event = new TableEvent($gDb);
-        $event->readDataByUuid($objectUri);
-        if (!$event) {
+        list($calendarName, $instanceId) = $calendarId;
+        $eventId = str_replace('.ics', '', $objectUri);
+        $events = new ModuleEvents();
+        $events->setCalendarNames(arrCalendarNames: [$calendarName]);
+        $events->setParameter('dat_uuid', $eventId);
+        $count = $events->getDataSetCount();
+        if ($count == 0) {
             return null;
         }
-        $lastModified = $event->getValue('dat_timestamp_change') ?? $$event->getValue('dat_timestamp_create');
-        // throw new NotImplemented(json_encode($event->getValue('dat_id')));
+        if ($count > 1) {
+            throw new Exception('Found more than one event with id ' . $eventId . '!');
+        }
+        $event = $events->getDataSet()['recordset'][0];
+        $lastModified = $event['dat_timestamp_change'] ?? $event['dat_timestamp_create'];
 
         return [
-            'id' => $event->getValue('dat_id'),
-            'uri' => $event->getValue('dat_uuid'),
+            'id' => $event['dat_id'],
+            'uri' => $event['dat_uuid'] . '.ics',
             'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
             'etag' => md5($lastModified),
             'size' => 0,
-            'calendardata' => $event->getIcal(),
+            'calendardata' => strval($events->getICalContent()),
             'component' => strtolower('VEVENT'),
         ];
     }
@@ -397,30 +405,13 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         if (!is_array($calendarId)) {
             throw new \InvalidArgumentException('The value passed to $calendarId is expected to be an array with a calendarId and an instanceId');
         }
-        list($calendarId, $instanceId) = $calendarId;
+        // list($calendarName, $instanceId) = $calendarId;
 
         $result = [];
-        // foreach (array_chunk($uris, 900) as $chunk) {
-        //     $query = 'SELECT id, uri, lastmodified, etag, calendarid, size, calendardata, componenttype FROM '.$this->calendarObjectTableName.' WHERE calendarid = ? AND uri IN (';
-        //     // Inserting a whole bunch of question marks
-        //     $query .= implode(',', array_fill(0, count($chunk), '?'));
-        //     $query .= ')';
-
-        //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute(array_merge([$calendarId], $chunk));
-
-        //     while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //         $result[] = [
-        //             'id' => $row['id'],
-        //             'uri' => $row['uri'],
-        //             'lastmodified' => (int) $row['lastmodified'],
-        //             'etag' => '"'.$row['etag'].'"',
-        //             'size' => (int) $row['size'],
-        //             'calendardata' => $row['calendardata'],
-        //             'component' => strtolower($row['componenttype']),
-        //         ];
-        //     }
-        // }
+        // TODO maybe this can be optimized to get all objects in one database call.
+        foreach ($uris as $uri) {
+            $result[] = $this->getCalendarObject($calendarId, $uri);
+        }
 
         return $result;
     }
@@ -867,11 +858,11 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         }
         list($calendarId, $instanceId) = $calendarId;
 
-        $result = [
-            'added' => [],
-            'modified' => [],
-            'deleted' => [],
-        ];
+        // $result = [
+        //     'added' => [],
+        //     'modified' => [],
+        //     'deleted' => [],
+        // ];
 
         // if ($syncToken) {
         //     $query = 'SELECT uri, operation, synctoken FROM '.$this->calendarChangesTableName.' WHERE synctoken >= ?  AND calendarid = ? ORDER BY synctoken';
@@ -944,7 +935,8 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         //     $result['added'] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         // }
 
-        return $result;
+        // return $result;
+        return null;
     }
 
     /**
@@ -1165,7 +1157,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      * @param string $principalUri
      * @param string $objectUri
      *
-     * @return array
+     * @return array|null
      */
     public function getSchedulingObject($principalUri, $objectUri)
     {
@@ -1173,7 +1165,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         // $stmt->execute([$principalUri, $objectUri]);
         // $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        // if (!$row) {
         return null;
         // }
 
