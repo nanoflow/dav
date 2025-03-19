@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 
+use Admidio\Categories\Entity\Category;
 use Admidio\Events\Entity\Event;
+use Admidio\Users\Entity\User;
 use Sabre\CalDAV\Backend\AbstractBackend;
 use Sabre\CalDAV\Backend\SyncSupport;
 use Sabre\CalDAV\Backend\SubscriptionSupport;
@@ -66,26 +68,18 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     {
         global $gDb, $gProfileFields;
 
-        // $user = new User($gDb, $gProfileFields, $this->getUserId($principalUri));
-        // $user->checkRolesRight();
+        $user = new User($gDb, $gProfileFields, $this->getUserId($principalUri));
+        $user->checkRolesRight();
+        $visibleCalendarIds = $user->getAllVisibleCategories('EVT');
 
-        // the sql statement which returns all found categories
-        $sql = 'SELECT DISTINCT cat_id, cat_org_id, cat_uuid, cat_name, cat_default, cat_sequence
-                FROM ' . TBL_CATEGORIES . ' INNER JOIN ' . TBL_EVENTS . ' ON cat_id = dat_cat_id ' .
-            "WHERE cat_type = 'EVT'";
-        $pdoStatement = $gDb->queryPrepared($sql);
-
-        // $visibleCalendars = $user->get
         $calendars = [];
-        while ($row = $pdoStatement->fetch()) {
-            // $components = [];
-            //     if ($row['components']) {
-            //         $components = explode(',', $row['components']);
-            //     }
+        foreach ($visibleCalendarIds as $calendarId) {
+            $calendarData = new Category($gDb, $calendarId);
+            $calendarName = $calendarData->getValue('cat_name');
 
             $calendar = [
-                'id' => [$row['cat_name'], (int) 0],
-                'uri' => $row['cat_name'],
+                'id' => [$calendarName, (int) 0],
+                'uri' => $calendarName,
                 'principaluri' => $principalUri,
                 // '{'.CalDAV\Plugin::NS_CALENDARSERVER.'}getctag' => 'http://sabre.io/ns/sync/'.($row['synctoken'] ? $row['synctoken'] : '0'),
                 // '{http://sabredav.org/ns}sync-token' => $row['synctoken'] ? $row['synctoken'] : '0',
@@ -112,6 +106,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
 
             $calendars[] = $calendar;
         }
+
 
         return $calendars;
     }
