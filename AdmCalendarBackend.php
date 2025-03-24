@@ -94,8 +94,8 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
                 // 'share-resource-uri' => '/ns/share/' . $calendarUuid,
                 // "{urn:ietf:params:xml:ns:caldav}calendar-description" => null,
                 // "{urn:ietf:params:xml:ns:caldav}calendar-timezone" => null,
-                // "{http:\/\/apple.com\/ns\/ical\/}calendar-order" => 0,
-                // "{http:\/\/apple.com\/ns\/ical\/}calendar-color" => null,
+                '{http://apple.com/ns/ical/}calendar-order' => $calendarId,
+                // "{http://apple.com/ns/ical/}calendar-color" => null,
             ];
         }
 
@@ -116,56 +116,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function createCalendar($principalUri, $calendarUri, array $properties)
     {
         throw new NotImplemented('Adding calendars is not yet supported');
-        // $fieldNames = [
-        //     'principaluri',
-        //     'uri',
-        //     'transparent',
-        //     'calendarid',
-        // ];
-        // $values = [
-        //     ':principaluri' => $principalUri,
-        //     ':uri' => $calendarUri,
-        //     ':transparent' => 0,
-        // ];
-
-        // $sccs = '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set';
-        // if (!isset($properties[$sccs])) {
-        //     // Default value
-        //     $components = 'VEVENT,VTODO';
-        // } else {
-        //     if (!($properties[$sccs] instanceof CalDAV\Xml\Property\SupportedCalendarComponentSet)) {
-        //         throw new DAV\Exception('The '.$sccs.' property must be of type: \Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet');
-        //     }
-        //     $components = implode(',', $properties[$sccs]->getValue());
-        // }
-        // $transp = '{'.CalDAV\Plugin::NS_CALDAV.'}schedule-calendar-transp';
-        // if (isset($properties[$transp])) {
-        //     $values[':transparent'] = 'transparent' === $properties[$transp]->getValue() ? 1 : 0;
-        // }
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarTableName.' (synctoken, components) VALUES (1, ?)');
-        // $stmt->execute([$components]);
-
-        // $calendarUuid = $this->pdo->lastInsertId(
-        //     $this->calendarTableName.'_id_seq'
-        // );
-
-        // $values[':calendarid'] = $calendarUuid;
-
-        // foreach ($this->propertyMap as $xmlName => $dbName) {
-        //     if (isset($properties[$xmlName])) {
-        //         $values[':'.$dbName] = $properties[$xmlName];
-        //         $fieldNames[] = $dbName;
-        //     }
-        // }
-
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarInstancesTableName.' ('.implode(', ', $fieldNames).') VALUES ('.implode(', ', array_keys($values)).')');
-
-        // $stmt->execute($values);
-
-        // return [
-        //     $calendarUuid,
-        //     $this->pdo->lastInsertId($this->calendarInstancesTableName.'_id_seq'),
-        // ];
     }
 
     /**
@@ -184,39 +134,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateCalendar($calendarUuid, PropPatch $propPatch)
     {
-        throw new NotImplemented('Updating calendars is not yet supported');
-        
 
-        // $supportedProperties = array_keys($this->propertyMap);
-        // $supportedProperties[] = '{'.CalDAV\Plugin::NS_CALDAV.'}schedule-calendar-transp';
-
-        // $propPatch->handle($supportedProperties, function ($mutations) use ($calendarUuid, $instanceId) {
-        //     $newValues = [];
-        //     foreach ($mutations as $propertyName => $propertyValue) {
-        //         switch ($propertyName) {
-        //             case '{'.CalDAV\Plugin::NS_CALDAV.'}schedule-calendar-transp':
-        //                 $fieldName = 'transparent';
-        //                 $newValues[$fieldName] = 'transparent' === $propertyValue->getValue();
-        //                 break;
-        //             default:
-        //                 $fieldName = $this->propertyMap[$propertyName];
-        //                 $newValues[$fieldName] = $propertyValue;
-        //                 break;
-        //         }
-        //     }
-        //     $valuesSql = [];
-        //     foreach ($newValues as $fieldName => $value) {
-        //         $valuesSql[] = $fieldName.' = ?';
-        //     }
-
-        //     $stmt = $this->pdo->prepare('UPDATE '.$this->calendarInstancesTableName.' SET '.implode(', ', $valuesSql).' WHERE id = ?');
-        //     $newValues['id'] = $instanceId;
-        //     $stmt->execute(array_values($newValues));
-
-        //     $this->addChange($calendarUuid, '', 2);
-
-        //     return true;
-        // });
     }
 
     /**
@@ -227,36 +145,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function deleteCalendar($calendarUuid)
     {
         throw new NotImplemented('Deleting calendars is not yet supported');
-        
-
-        // $stmt = $this->pdo->prepare('SELECT access FROM '.$this->calendarInstancesTableName.' where id = ?');
-        // $stmt->execute([$instanceId]);
-        // $access = (int) $stmt->fetchColumn();
-
-        // if (\Sabre\DAV\Sharing\Plugin::ACCESS_SHAREDOWNER === $access) {
-        //     /**
-        //      * If the user is the owner of the calendar, we delete all data and all
-        //      * instances.
-        //      **/
-        //     $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarObjectTableName.' WHERE calendarid = ?');
-        //     $stmt->execute([$calendarUuid]);
-
-        //     $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarChangesTableName.' WHERE calendarid = ?');
-        //     $stmt->execute([$calendarUuid]);
-
-        //     $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarInstancesTableName.' WHERE calendarid = ?');
-        //     $stmt->execute([$calendarUuid]);
-
-        //     $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarTableName.' WHERE id = ?');
-        //     $stmt->execute([$calendarUuid]);
-        // } else {
-        //     /**
-        //      * If it was an instance of a shared calendar, we only delete that
-        //      * instance.
-        //      */
-        //     $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarInstancesTableName.' WHERE id = ?');
-        //     $stmt->execute([$instanceId]);
-        // }
     }
 
     /**
@@ -312,7 +200,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
                 'component' => strtolower('VEVENT'),
             ];
         }
-
         return $result;
     }
 
@@ -409,27 +296,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function createCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
         throw new NotImplemented('Creating calendar objects is not yet supported');
-
-        
-
-        // $extraData = $this->getDenormalizedData($calendarData);
-
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarObjectTableName.' (calendarid, uri, calendardata, lastmodified, etag, size, componenttype, firstoccurence, lastoccurence, uid) VALUES (?,?,?,?,?,?,?,?,?,?)');
-        // $stmt->execute([
-        //     $calendarUuid,
-        //     $objectUri,
-        //     $calendarData,
-        //     time(),
-        //     $extraData['etag'],
-        //     $extraData['size'],
-        //     $extraData['componentType'],
-        //     $extraData['firstOccurence'],
-        //     $extraData['lastOccurence'],
-        //     $extraData['uid'],
-        // ]);
-        // $this->addChange($calendarUuid, $objectUri, 1);
-
-        // return '"'.$extraData['etag'].'"';
     }
 
     /**
@@ -454,15 +320,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function updateCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
         throw new NotImplemented('Updating calendar objects is not yet supported');
-
-        // $extraData = $this->getDenormalizedData($calendarData);
-
-        // $stmt = $this->pdo->prepare('UPDATE '.$this->calendarObjectTableName.' SET calendardata = ?, lastmodified = ?, etag = ?, size = ?, componenttype = ?, firstoccurence = ?, lastoccurence = ?, uid = ? WHERE calendarid = ? AND uri = ?');
-        // $stmt->execute([$calendarData, time(), $extraData['etag'], $extraData['size'], $extraData['componentType'], $extraData['firstOccurence'], $extraData['lastOccurence'], $extraData['uid'], $calendarUuid, $objectUri]);
-
-        // $this->addChange($calendarUuid, $objectUri, 2);
-
-        // return '"'.$extraData['etag'].'"';
     }
 
     /**
@@ -484,75 +341,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     protected function getDenormalizedData($calendarData)
     {
         throw new NotImplemented('Getting denormalized data is not yet supported');
-
-        // $vObject = VObject\Reader::read($calendarData);
-        // $componentType = null;
-        // $component = null;
-        // $firstOccurence = null;
-        // $lastOccurence = null;
-        // $uid = null;
-        // foreach ($vObject->getComponents() as $component) {
-        //     if ('VTIMEZONE' !== $component->name) {
-        //         $componentType = $component->name;
-        //         $uid = (string) $component->UID;
-        //         break;
-        //     }
-        // }
-        // if (!$componentType) {
-        //     throw new \Sabre\DAV\Exception\BadRequest('Calendar objects must have a VJOURNAL, VEVENT or VTODO component');
-        // }
-        // if ('VEVENT' === $componentType) {
-        //     $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
-        //     // Finding the last occurence is a bit harder
-        //     if (!isset($component->RRULE)) {
-        //         if (isset($component->DTEND)) {
-        //             $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
-        //         } elseif (isset($component->DURATION)) {
-        //             $endDate = clone $component->DTSTART->getDateTime();
-        //             $endDate = $endDate->add(VObject\DateTimeParser::parse($component->DURATION->getValue()));
-        //             $lastOccurence = $endDate->getTimeStamp();
-        //         } elseif (!$component->DTSTART->hasTime()) {
-        //             $endDate = clone $component->DTSTART->getDateTime();
-        //             $endDate = $endDate->modify('+1 day');
-        //             $lastOccurence = $endDate->getTimeStamp();
-        //         } else {
-        //             $lastOccurence = $firstOccurence;
-        //         }
-        //     } else {
-        //         $it = new VObject\Recur\EventIterator($vObject, (string) $component->UID);
-        //         $maxDate = new \DateTime(self::MAX_DATE);
-        //         if ($it->isInfinite()) {
-        //             $lastOccurence = $maxDate->getTimeStamp();
-        //         } else {
-        //             $end = $it->getDtEnd();
-        //             while ($it->valid() && $end < $maxDate) {
-        //                 $end = $it->getDtEnd();
-        //                 $it->next();
-        //             }
-        //             $lastOccurence = $end->getTimeStamp();
-        //         }
-        //     }
-
-        //     // Ensure Occurence values are positive
-        //     if ($firstOccurence < 0) {
-        //         $firstOccurence = 0;
-        //     }
-        //     if ($lastOccurence < 0) {
-        //         $lastOccurence = 0;
-        //     }
-        // }
-
-        // // Destroy circular references to PHP will GC the object.
-        // $vObject->destroy();
-
-        // return [
-        //     'etag' => md5($calendarData),
-        //     'size' => strlen($calendarData),
-        //     'componentType' => $componentType,
-        //     'firstOccurence' => $firstOccurence,
-        //     'lastOccurence' => $lastOccurence,
-        //     'uid' => $uid,
-        // ];
     }
 
     /**
@@ -566,13 +354,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function deleteCalendarObject($calendarUuid, $objectUri)
     {
         throw new NotImplemented('Deleting calendar objects is not yet supported');
-
-        
-
-        // $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarObjectTableName.' WHERE calendarid = ? AND uri = ?');
-        // $stmt->execute([$calendarUuid, $objectUri]);
-
-        // $this->addChange($calendarUuid, $objectUri, 3);
     }
 
     /**
@@ -629,76 +410,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function calendarQuery($calendarUuid, array $filters)
     {
-        // $componentType = null;
-        // $requirePostFilter = true;
-        // $timeRange = null;
-
-        // // if no filters were specified, we don't need to filter after a query
-        // if (!$filters['prop-filters'] && !$filters['comp-filters']) {
-        //     $requirePostFilter = false;
-        // }
-
-        // // Figuring out if there's a component filter
-        // if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined']) {
-        //     $componentType = $filters['comp-filters'][0]['name'];
-
-        //     // Checking if we need post-filters
-        //     $has_time_range = array_key_exists('time-range', $filters['comp-filters'][0]) && $filters['comp-filters'][0]['time-range'];
-        //     if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$has_time_range && !$filters['comp-filters'][0]['prop-filters']) {
-        //         $requirePostFilter = false;
-        //     }
-        //     // There was a time-range filter
-        //     if ('VEVENT' == $componentType && $has_time_range) {
-        //         $timeRange = $filters['comp-filters'][0]['time-range'];
-
-        //         // If start time OR the end time is not specified, we can do a
-        //         // 100% accurate mysql query.
-        //         if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && $timeRange) {
-        //             if ((array_key_exists('start', $timeRange) && !$timeRange['start']) || (array_key_exists('end', $timeRange) && !$timeRange['end'])) {
-        //                 $requirePostFilter = false;
-        //             }
-        //         }
-        //     }
-        // }
-
-        // if ($requirePostFilter) {
-        //     $query = 'SELECT uri, calendardata FROM '.$this->calendarObjectTableName.' WHERE calendarid = :calendarid';
-        // } else {
-        //     $query = 'SELECT uri FROM '.$this->calendarObjectTableName.' WHERE calendarid = :calendarid';
-        // }
-
-        // $values = [
-        //     'calendarid' => $calendarUuid,
-        // ];
-
-        // if ($componentType) {
-        //     $query .= ' AND componenttype = :componenttype';
-        //     $values['componenttype'] = $componentType;
-        // }
-
-        // if ($timeRange && array_key_exists('start', $timeRange) && $timeRange['start']) {
-        //     $query .= ' AND lastoccurence > :startdate';
-        //     $values['startdate'] = $timeRange['start']->getTimeStamp();
-        // }
-        // if ($timeRange && array_key_exists('end', $timeRange) && $timeRange['end']) {
-        //     $query .= ' AND firstoccurence < :enddate';
-        //     $values['enddate'] = $timeRange['end']->getTimeStamp();
-        // }
-
-        // $stmt = $this->pdo->prepare($query);
-        // $stmt->execute($values);
-
-        $result = [];
-        // while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //     if ($requirePostFilter) {
-        //         if (!$this->validateFilterForObject($row, $filters)) {
-        //             continue;
-        //         }
-        //     }
-        //     $result[] = $row['uri'];
-        // }
-
-        return $result;
+        return [];
     }
 
     /**
@@ -724,29 +436,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function getCalendarObjectByUID($principalUri, $uid)
     {
         throw new NotImplemented('Getting calendar objects by UID is not yet supported');
-
-        //         $query = <<<SQL
-// SELECT
-//     calendar_instances.uri AS calendaruri, calendarobjects.uri as objecturi
-// FROM
-//     $this->calendarObjectTableName AS calendarobjects
-// LEFT JOIN
-//     $this->calendarInstancesTableName AS calendar_instances
-//     ON calendarobjects.calendarid = calendar_instances.calendarid
-// WHERE
-//     calendar_instances.principaluri = ?
-//     AND
-//     calendarobjects.uid = ?
-//     AND
-//     calendar_instances.access = 1
-// SQL;
-
-        //         $stmt = $this->pdo->prepare($query);
-//         $stmt->execute([$principalUri, $uid]);
-
-        //         if ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-//             return $row['calendaruri'].'/'.$row['objecturi'];
-//         }
     }
 
     /**
@@ -808,84 +497,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getChangesForCalendar($calendarUuid, $syncToken, $syncLevel, $limit = null)
     {
-        // $result = [
-        //     'added' => [],
-        //     'modified' => [],
-        //     'deleted' => [],
-        // ];
-
-        // if ($syncToken) {
-        //     $query = 'SELECT uri, operation, synctoken FROM '.$this->calendarChangesTableName.' WHERE synctoken >= ?  AND calendarid = ? ORDER BY synctoken';
-        //     if ($limit > 0) {
-        //         // Fetch one more raw to detect result truncation
-        //         $query .= ' LIMIT '.((int) $limit + 1);
-        //     }
-
-        //     // Fetching all changes
-        //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$syncToken, $calendarUuid]);
-
-        //     $changes = [];
-
-        //     // This loop ensures that any duplicates are overwritten, only the
-        //     // last change on a node is relevant.
-        //     while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //         $changes[$row['uri']] = $row;
-        //     }
-        //     $currentToken = null;
-
-        //     $result_count = 0;
-        //     foreach ($changes as $uri => $operation) {
-        //         if (!is_null($limit) && $result_count >= $limit) {
-        //             $result['result_truncated'] = true;
-        //             break;
-        //         }
-
-        //         if (null === $currentToken || $currentToken < $operation['synctoken'] + 1) {
-        //             // SyncToken in CalDAV perspective is consistently the next number of the last synced change event in this class.
-        //             $currentToken = $operation['synctoken'] + 1;
-        //         }
-
-        //         ++$result_count;
-        //         switch ($operation['operation']) {
-        //             case 1:
-        //                 $result['added'][] = $uri;
-        //                 break;
-        //             case 2:
-        //                 $result['modified'][] = $uri;
-        //                 break;
-        //             case 3:
-        //                 $result['deleted'][] = $uri;
-        //                 break;
-        //         }
-        //     }
-
-        //     if (!is_null($currentToken)) {
-        //         $result['syncToken'] = $currentToken;
-        //     } else {
-        //         // This means returned value is equivalent to syncToken
-        //         $result['syncToken'] = $syncToken;
-        //     }
-        // } else {
-        //     // Current synctoken
-        //     $stmt = $this->pdo->prepare('SELECT synctoken FROM '.$this->calendarTableName.' WHERE id = ?');
-        //     $stmt->execute([$calendarUuid]);
-        //     $currentToken = $stmt->fetchColumn(0);
-
-        //     if (is_null($currentToken)) {
-        //         return null;
-        //     }
-        //     $result['syncToken'] = $currentToken;
-
-        //     // No synctoken supplied, this is the initial sync.
-        //     $query = 'SELECT uri FROM '.$this->calendarObjectTableName.' WHERE calendarid = ?';
-        //     $stmt = $this->pdo->prepare($query);
-        //     $stmt->execute([$calendarUuid]);
-
-        //     $result['added'] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        // }
-
-        // return $result;
         return null;
     }
 
@@ -899,18 +510,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     protected function addChange($calendarUuid, $objectUri, $operation)
     {
         throw new NotImplemented('Adding changes is not yet supported');
-
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarChangesTableName.' (uri, synctoken, calendarid, operation) SELECT ?, synctoken, ?, ? FROM '.$this->calendarTableName.' WHERE id = ?');
-        // $stmt->execute([
-        //     $objectUri,
-        //     $calendarUuid,
-        //     $operation,
-        //     $calendarUuid,
-        // ]);
-        // $stmt = $this->pdo->prepare('UPDATE '.$this->calendarTableName.' SET synctoken = synctoken + 1 WHERE id = ?');
-        // $stmt->execute([
-        //     $calendarUuid,
-        // ]);
     }
 
     /**
@@ -947,40 +546,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getSubscriptionsForUser($principalUri)
     {
-        // $fields = array_values($this->subscriptionPropertyMap);
-        // $fields[] = 'id';
-        // $fields[] = 'uri';
-        // $fields[] = 'source';
-        // $fields[] = 'principaluri';
-        // $fields[] = 'lastmodified';
-
-        // // Making fields a comma-delimited list
-        // $fields = implode(', ', $fields);
-        // $stmt = $this->pdo->prepare('SELECT '.$fields.' FROM '.$this->calendarSubscriptionsTableName.' WHERE principaluri = ? ORDER BY calendarorder ASC');
-        // $stmt->execute([$principalUri]);
-
-        $subscriptions = [];
-        // while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //     $subscription = [
-        //         'id' => $row['id'],
-        //         'uri' => $row['uri'],
-        //         'principaluri' => $row['principaluri'],
-        //         'source' => $row['source'],
-        //         'lastmodified' => $row['lastmodified'],
-
-        //         '{'.CalDAV\Plugin::NS_CALDAV.'}supported-calendar-component-set' => new CalDAV\Xml\Property\SupportedCalendarComponentSet(['VTODO', 'VEVENT']),
-        //     ];
-
-        //     foreach ($this->subscriptionPropertyMap as $xmlName => $dbName) {
-        //         if (!is_null($row[$dbName])) {
-        //             $subscription[$xmlName] = $row[$dbName];
-        //         }
-        //     }
-
-        //     $subscriptions[] = $subscription;
-        // }
-
-        return $subscriptions;
+        return [];
     }
 
     /**
@@ -997,38 +563,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function createSubscription($principalUri, $uri, array $properties)
     {
         throw new NotImplemented('Creating subscriptions is not yet supported');
-
-        // $fieldNames = [
-        //     'principaluri',
-        //     'uri',
-        //     'source',
-        //     'lastmodified',
-        // ];
-
-        // if (!isset($properties['{http://calendarserver.org/ns/}source'])) {
-        //     throw new Forbidden('The {http://calendarserver.org/ns/}source property is required when creating subscriptions');
-        // }
-
-        // $values = [
-        //     ':principaluri' => $principalUri,
-        //     ':uri' => $uri,
-        //     ':source' => $properties['{http://calendarserver.org/ns/}source']->getHref(),
-        //     ':lastmodified' => time(),
-        // ];
-
-        // foreach ($this->subscriptionPropertyMap as $xmlName => $dbName) {
-        //     if (isset($properties[$xmlName])) {
-        //         $values[':'.$dbName] = $properties[$xmlName];
-        //         $fieldNames[] = $dbName;
-        //     }
-        // }
-
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarSubscriptionsTableName.' ('.implode(', ', $fieldNames).') VALUES ('.implode(', ', array_keys($values)).')');
-        // $stmt->execute($values);
-
-        // return $this->pdo->lastInsertId(
-        //     $this->calendarSubscriptionsTableName.'_id_seq'
-        // );
     }
 
     /**
@@ -1048,35 +582,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function updateSubscription($subscriptionId, PropPatch $propPatch)
     {
         throw new NotImplemented('Updating subscriptions is not yet supported');
-
-        // $supportedProperties = array_keys($this->subscriptionPropertyMap);
-        // $supportedProperties[] = '{http://calendarserver.org/ns/}source';
-
-        // $propPatch->handle($supportedProperties, function ($mutations) use ($subscriptionId) {
-        //     $newValues = [];
-
-        //     foreach ($mutations as $propertyName => $propertyValue) {
-        //         if ('{http://calendarserver.org/ns/}source' === $propertyName) {
-        //             $newValues['source'] = $propertyValue->getHref();
-        //         } else {
-        //             $fieldName = $this->subscriptionPropertyMap[$propertyName];
-        //             $newValues[$fieldName] = $propertyValue;
-        //         }
-        //     }
-
-        //     // Now we're generating the sql query.
-        //     $valuesSql = [];
-        //     foreach ($newValues as $fieldName => $value) {
-        //         $valuesSql[] = $fieldName.' = ?';
-        //     }
-
-        //     $stmt = $this->pdo->prepare('UPDATE '.$this->calendarSubscriptionsTableName.' SET '.implode(', ', $valuesSql).', lastmodified = ? WHERE id = ?');
-        //     $newValues['lastmodified'] = time();
-        //     $newValues['id'] = $subscriptionId;
-        //     $stmt->execute(array_values($newValues));
-
-        //     return true;
-        // });
     }
 
     /**
@@ -1087,9 +592,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function deleteSubscription($subscriptionId)
     {
         throw new NotImplemented('Deleting subscriptions is not yet supported');
-
-        // $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarSubscriptionsTableName.' WHERE id = ?');
-        // $stmt->execute([$subscriptionId]);
     }
 
     /**
@@ -1111,20 +613,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getSchedulingObject($principalUri, $objectUri)
     {
-        // $stmt = $this->pdo->prepare('SELECT uri, calendardata, lastmodified, etag, size FROM '.$this->schedulingObjectTableName.' WHERE principaluri = ? AND uri = ?');
-        // $stmt->execute([$principalUri, $objectUri]);
-        // $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-
         return null;
-        // }
-
-        // return [
-        //     'uri' => $row['uri'],
-        //     'calendardata' => $row['calendardata'],
-        //     'lastmodified' => $row['lastmodified'],
-        //     'etag' => '"'.$row['etag'].'"',
-        //     'size' => (int) $row['size'],
-        //  ];
     }
 
     /**
@@ -1141,21 +630,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getSchedulingObjects($principalUri)
     {
-        // $stmt = $this->pdo->prepare('SELECT id, calendardata, uri, lastmodified, etag, size FROM '.$this->schedulingObjectTableName.' WHERE principaluri = ?');
-        // $stmt->execute([$principalUri]);
-
-        $result = [];
-        // foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
-        //     $result[] = [
-        //         'calendardata' => $row['calendardata'],
-        //         'uri' => $row['uri'],
-        //         'lastmodified' => $row['lastmodified'],
-        //         'etag' => '"'.$row['etag'].'"',
-        //         'size' => (int) $row['size'],
-        //     ];
-        // }
-
-        return $result;
+        return [];
     }
 
     /**
@@ -1167,9 +642,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function deleteSchedulingObject($principalUri, $objectUri)
     {
         throw new NotImplemented('Deleting scheduling object is not yet supported');
-
-        // $stmt = $this->pdo->prepare('DELETE FROM '.$this->schedulingObjectTableName.' WHERE principaluri = ? AND uri = ?');
-        // $stmt->execute([$principalUri, $objectUri]);
     }
 
     /**
@@ -1182,14 +654,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function createSchedulingObject($principalUri, $objectUri, $objectData)
     {
         throw new NotImplemented('Creating scheduling objects is not yet supported');
-
-        // $stmt = $this->pdo->prepare('INSERT INTO '.$this->schedulingObjectTableName.' (principaluri, calendardata, uri, lastmodified, etag, size) VALUES (?, ?, ?, ?, ?, ?)');
-
-        // if (is_resource($objectData)) {
-        //     $objectData = stream_get_contents($objectData);
-        // }
-
-        // $stmt->execute([$principalUri, $objectData, $objectUri, time(), md5($objectData), strlen($objectData)]);
     }
 
     /**
@@ -1200,91 +664,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateInvites($calendarUuid, array $sharees)
     {
-        // $currentInvites = $this->getInvites($calendarUuid);
-
-        //         $removeStmt = $this->pdo->prepare('DELETE FROM '.$this->calendarInstancesTableName.' WHERE calendarid = ? AND share_href = ? AND access IN (2,3)');
-//         $updateStmt = $this->pdo->prepare('UPDATE '.$this->calendarInstancesTableName.' SET access = ?, share_displayname = ?, share_invitestatus = ? WHERE calendarid = ? AND share_href = ?');
-
-        //         $insertStmt = $this->pdo->prepare('
-// INSERT INTO '.$this->calendarInstancesTableName.'
-//     (
-//         calendarid,
-//         principaluri,
-//         access,
-//         displayname,
-//         uri,
-//         description,
-//         calendarorder,
-//         calendarcolor,
-//         timezone,
-//         transparent,
-//         share_href,
-//         share_displayname,
-//         share_invitestatus
-//     )
-//     SELECT
-//         ?,
-//         ?,
-//         ?,
-//         displayname,
-//         ?,
-//         description,
-//         calendarorder,
-//         calendarcolor,
-//         timezone,
-//         1,
-//         ?,
-//         ?,
-//         ?
-//     FROM '.$this->calendarInstancesTableName.' WHERE id = ?');
-
-        //         foreach ($sharees as $sharee) {
-//             if (\Sabre\DAV\Sharing\Plugin::ACCESS_NOACCESS === $sharee->access) {
-//                 // if access was set no NOACCESS, it means access for an
-//                 // existing sharee was removed.
-//                 $removeStmt->execute([$calendarUuid, $sharee->href]);
-//                 continue;
-//             }
-
-        //             if (is_null($sharee->principal)) {
-//                 // If the server could not determine the principal automatically,
-//                 // we will mark the invite status as invalid.
-//                 $sharee->inviteStatus = \Sabre\DAV\Sharing\Plugin::INVITE_INVALID;
-//             } else {
-//                 // Because sabre/dav does not yet have an invitation system,
-//                 // every invite is automatically accepted for now.
-//                 $sharee->inviteStatus = \Sabre\DAV\Sharing\Plugin::INVITE_ACCEPTED;
-//             }
-
-        //             foreach ($currentInvites as $oldSharee) {
-//                 if ($oldSharee->href === $sharee->href) {
-//                     // This is an update
-//                     $sharee->properties = array_merge(
-//                         $oldSharee->properties,
-//                         $sharee->properties
-//                     );
-//                     $updateStmt->execute([
-//                         $sharee->access,
-//                         isset($sharee->properties['{DAV:}displayname']) ? $sharee->properties['{DAV:}displayname'] : null,
-//                         $sharee->inviteStatus ?: $oldSharee->inviteStatus,
-//                         $calendarUuid,
-//                         $sharee->href,
-//                     ]);
-//                     continue 2;
-//                 }
-//             }
-//             // If we got here, it means it was a new sharee
-//             $insertStmt->execute([
-//                 $calendarUuid,
-//                 $sharee->principal,
-//                 $sharee->access,
-//                 \Sabre\DAV\UUIDUtil::getUUID(),
-//                 $sharee->href,
-//                 isset($sharee->properties['{DAV:}displayname']) ? $sharee->properties['{DAV:}displayname'] : null,
-//                 $sharee->inviteStatus ?: \Sabre\DAV\Sharing\Plugin::INVITE_NORESPONSE,
-//                 $instanceId,
-//             ]);
-//         }
     }
 
     /**
@@ -1305,36 +684,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getInvites($calendarUuid)
     {
-        //         $query = <<<SQL
-// SELECT
-//     principaluri,
-//     access,
-//     share_href,
-//     share_displayname,
-//     share_invitestatus
-// FROM {$this->calendarInstancesTableName}
-// WHERE
-//     calendarid = ?
-// SQL;
-
-        //         $stmt = $this->pdo->prepare($query);
-//         $stmt->execute([$calendarUuid]);
-
-        $result = [];
-        // while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-        //     $result[] = new Sharee([
-        //         'href' => isset($row['share_href']) ? $row['share_href'] : \Sabre\HTTP\encodePath($row['principaluri']),
-        //         'access' => (int) $row['access'],
-        //         /// Everyone is always immediately accepted, for now.
-        //         'inviteStatus' => (int) $row['share_invitestatus'],
-        //         'properties' => !empty($row['share_displayname'])
-        //             ? ['{DAV:}displayname' => $row['share_displayname']]
-        //             : [],
-        //         'principal' => $row['principaluri'],
-        //     ]);
-        // }
-
-        return $result;
+        return [];
     }
 
     /**
