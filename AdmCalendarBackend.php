@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 
 use Admidio\Categories\Entity\Category;
+use Admidio\Roles\Entity\ListConfiguration;
+use Admidio\Roles\Entity\Role;
+use Admidio\Events\Entity\Event;
+use Admidio\Roles\ValueObject\ListData;
 use Admidio\Users\Entity\User;
+use Eluceo\iCal\Domain\Entity\Attendee;
+use Eluceo\iCal\Domain\ValueObject\EmailAddress;
 use Sabre\CalDAV\Backend\AbstractBackend;
 use Sabre\CalDAV\Backend\SyncSupport;
 use Sabre\CalDAV\Backend\SubscriptionSupport;
@@ -185,7 +191,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function updateCalendar($calendarUuid, PropPatch $propPatch)
     {
         throw new NotImplemented('Updating calendars is not yet supported');
-        
+
 
         // $supportedProperties = array_keys($this->propertyMap);
         // $supportedProperties[] = '{'.CalDAV\Plugin::NS_CALDAV.'}schedule-calendar-transp';
@@ -227,7 +233,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     public function deleteCalendar($calendarUuid)
     {
         throw new NotImplemented('Deleting calendars is not yet supported');
-        
+
 
         // $stmt = $this->pdo->prepare('SELECT access FROM '.$this->calendarInstancesTableName.' where id = ?');
         // $stmt->execute([$instanceId]);
@@ -335,7 +341,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getCalendarObject($calendarUuid, $objectUri)
     {
-        global $gDb;
+        global $gDb, $gProfileFields;
 
         $calendar = new Category($gDb);
         $calendar->readDataByUuid($calendarUuid);
@@ -351,15 +357,64 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         if ($count > 1) {
             throw new Exception('Found more than one event with id ' . $eventId . '!');
         }
-        $event = $events->getDataSet()['recordset'][0];
-        $lastModified = $event['dat_timestamp_change'] ?? $event['dat_timestamp_create'];
+        $eventRecord = $events->getDataSet()['recordset'][0];
+        $lastModified = $eventRecord['dat_timestamp_change'] ?? $eventRecord['dat_timestamp_create'];
+
+        $event = new Event($gDb);
+        $event->setArray($eventRecord);
+
+        $iCalEvent = new Eluceo\iCal\Domain\Entity\Event(new Eluceo\iCal\Domain\ValueObject\UniqueIdentifier($eventRecord['dat_uuid']));
+        $iCalEvent->setSummary($eventRecord['dat_headline']);
+        $iCalEvent->setDescription((string) $eventRecord['dat_description']);
+        $iCalEvent->setLocation(new \Eluceo\iCal\Domain\ValueObject\Location((string) $eventRecord['dat_location']));
+
+        $iCalEvent->touch(new Eluceo\iCal\Domain\ValueObject\Timestamp(new DateTimeImmutable($lastModified)));
+
+        if ($eventRecord['dat_all_day'] === true) {
+            if ($event->getValue('dat_begin', 'Y-m-d') === $event->getValue('dat_end', 'Y-m-d')) {
+                $iCalEvent->setOccurrence(new \Eluceo\iCal\Domain\ValueObject\SingleDay(
+                    new \Eluceo\iCal\Domain\ValueObject\Date(new DateTimeImmutable($event->getValue('dat_begin', 'Y-m-d')))
+                ));
+            } else {
+                $iCalEvent->setOccurrence(new \Eluceo\iCal\Domain\ValueObject\MultiDay(
+                    new \Eluceo\iCal\Domain\ValueObject\Date(new DateTimeImmutable($event->getValue('dat_begin', 'Y-m-d'))),
+                    new \Eluceo\iCal\Domain\ValueObject\Date(new DateTimeImmutable($event->getValue('dat_end', 'Y-m-d')))
+                ));
+            }
+        } else {
+            $iCalEvent->setOccurrence(new \Eluceo\iCal\Domain\ValueObject\TimeSpan(
+                new \Eluceo\iCal\Domain\ValueObject\DateTime(new DateTimeImmutable($event->getValue('dat_begin', 'Y-m-d H:i:s')), false),
+                new \Eluceo\iCal\Domain\ValueObject\DateTime(new DateTimeImmutable($event->getValue('dat_end', 'Y-m-d H:i:s')), false)
+            ));
+        }
+        if ($event->allowedToParticipate()) {
+            $role = new Role($gDb, $eventRecord['dat_rol_id']);
+            $list = new ListConfiguration($gDb);
+            $list->addColumn((int) $gProfileFields->getProperty('EMAIL', 'usf_id'));
+            $listData = new ListData();
+            $listData->setDataByConfiguration($list, ['showRolesMembers' => [$role->getValue('rol_uuid')], 'showUserUUID' => true]);
+            $members = $listData->getData();
+
+            $attendees = [];
+            foreach ($members as $member) {
+                $email = new EmailAddress($member['EMAIL']);
+                $attendee = new Attendee($email);
+                $attendees[] = $attendee;
+            }
+
+            $iCalEvent->setAttendees($attendees);
+        }
+
+        $calendar = new Eluceo\iCal\Domain\Entity\Calendar([$iCalEvent]);
+        $componentFactory = new Eluceo\iCal\Presentation\Factory\CalendarFactory();
+        $calendarData = strval($componentFactory->createCalendar($calendar));
 
         return [
-            'id' => $event['dat_id'],
-            'uri' => $event['dat_uuid'] . '.ics',
+            'id' => $eventRecord['dat_id'],
+            'uri' => $eventRecord['dat_uuid'] . '.ics',
             'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
             'etag' => md5($lastModified),
-            'calendardata' => strval($events->getICalContent()),
+            'calendardata' => $calendarData,
             'component' => strtolower('VEVENT'),
         ];
     }
@@ -410,7 +465,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     {
         throw new NotImplemented('Creating calendar objects is not yet supported');
 
-        
+
 
         // $extraData = $this->getDenormalizedData($calendarData);
 
@@ -567,7 +622,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
     {
         throw new NotImplemented('Deleting calendar objects is not yet supported');
 
-        
+
 
         // $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarObjectTableName.' WHERE calendarid = ? AND uri = ?');
         // $stmt->execute([$calendarUuid, $objectUri]);
