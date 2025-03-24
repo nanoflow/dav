@@ -73,21 +73,27 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         $visibleCalendarIds = $user->getAllVisibleCategories('EVT');
 
         $calendars = [];
-        foreach ($visibleCalendarIds as $calendarUuid) {
-            $calendar = new Category($gDb, $calendarUuid);
+        foreach ($visibleCalendarIds as $calendarId) {
+            $calendar = new Category($gDb, $calendarId);
+            $calendarUuid = $calendar->getValue('cat_uuid');
             $calendarName = $calendar->getValue('cat_name');
 
             $calendars[] = [
-                'id' => $calendar->getValue('cat_uuid'),
-                'uri' => $calendarName,
+                'id' => $calendarUuid,
+                'uri' => $calendarUuid,
+                "{DAV:}displayname" => $calendarName,
                 'principaluri' => $principalUri,
                 'share-access' => 2, // 1 = owner, 2 = readonly, 3 = readwrite
                 'read-only' => true, // read-only is for backwards compatibility. Might go away in the future.
-                // '{'.CalDAV\Plugin::NS_CALENDARSERVER.'}getctag' => 'http://sabre.io/ns/sync/'.($row['synctoken'] ? $row['synctoken'] : '0'),
-                // '{http://sabredav.org/ns}sync-token' => $row['synctoken'] ? $row['synctoken'] : '0',
-                // '{'.Plugin::NS_CALDAV.'}supported-calendar-component-set' => new SupportedCalendarComponentSet($components),
-                // '{'.Plugin::NS_CALDAV.'}schedule-calendar-transp' => new ScheduleCalendarTransp('opaque'), //$row['transparent'] ? 'transparent' : 'opaque'),
-                // 'share-resource-uri' => '/ns/share/'.$row['calendarid'],
+                // '{' . Plugin::NS_CALENDARSERVER . '}getctag' => "http:\/\/sabre.io\/ns\/sync\/3",
+                // '{http://sabredav.org/ns}sync-token' => '3',
+                '{' . Plugin::NS_CALDAV . '}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
+                '{' . Plugin::NS_CALDAV . '}schedule-calendar-transp' => new ScheduleCalendarTransp('opaque'),
+                // 'share-resource-uri' => '/ns/share/' . $calendarUuid,
+                // "{urn:ietf:params:xml:ns:caldav}calendar-description" => null,
+                // "{urn:ietf:params:xml:ns:caldav}calendar-timezone" => null,
+                // "{http:\/\/apple.com\/ns\/ical\/}calendar-order" => 0,
+                // "{http:\/\/apple.com\/ns\/ical\/}calendar-color" => null,
             ];
         }
 
@@ -621,11 +627,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function calendarQuery($calendarUuid, array $filters)
     {
-        if (!is_array($calendarUuid)) {
-            throw new \InvalidArgumentException('The value passed to $calendarUuid is expected to be an array with a calendarId and an instanceId');
-        }
-        list($calendarUuid, $instanceId) = $calendarUuid;
-
         // $componentType = null;
         // $requirePostFilter = true;
         // $timeRange = null;
@@ -805,11 +806,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getChangesForCalendar($calendarUuid, $syncToken, $syncLevel, $limit = null)
     {
-        if (!is_array($calendarUuid)) {
-            throw new \InvalidArgumentException('The value passed to $calendarUuid is expected to be an array with a calendarId and an instanceId');
-        }
-        list($calendarUuid, $instanceId) = $calendarUuid;
-
         // $result = [
         //     'added' => [],
         //     'modified' => [],
@@ -1202,11 +1198,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateInvites($calendarUuid, array $sharees)
     {
-        if (!is_array($calendarUuid)) {
-            throw new \InvalidArgumentException('The value passed to $calendarUuid is expected to be an array with a calendarId and an instanceId');
-        }
         // $currentInvites = $this->getInvites($calendarUuid);
-        list($calendarUuid, $instanceId) = $calendarUuid;
 
         //         $removeStmt = $this->pdo->prepare('DELETE FROM '.$this->calendarInstancesTableName.' WHERE calendarid = ? AND share_href = ? AND access IN (2,3)');
 //         $updateStmt = $this->pdo->prepare('UPDATE '.$this->calendarInstancesTableName.' SET access = ?, share_displayname = ?, share_invitestatus = ? WHERE calendarid = ? AND share_href = ?');
@@ -1311,11 +1303,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getInvites($calendarUuid)
     {
-        if (!is_array($calendarUuid)) {
-            throw new \InvalidArgumentException('The value passed to getInvites() is expected to be an array with a calendarId and an instanceId');
-        }
-        list($calendarUuid, $instanceId) = $calendarUuid;
-
         //         $query = <<<SQL
 // SELECT
 //     principaluri,
