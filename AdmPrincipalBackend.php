@@ -60,18 +60,14 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
         global $gDb;
 
         $list = new ListConfiguration($gDb);
-        $list->addColumn('usr_login_name');
+        $list->addColumn('usr_login_name', filter: 'Nicht leer');
 
         $listData = new ListData();
         $listData->setDataByConfiguration($list, []);
-
         $members = $listData->getData();
 
         $principals = [];
         foreach ($members as $member) {
-            if (!$member['usr_login_name']) {
-                continue;
-            }
             $principals[] = $this->getPrincipalByPath($prefixPath . '/' . $member['usr_login_name']);
         }
         return $principals;
@@ -201,18 +197,7 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function getGroupMembership($principal)
     {
-        // global $gDb;
-
-        // $user = new User($gDb, userId: $this->getUserId($principal));
-        // $roleIds = $user->getRoleMemberships();
-        $roles = [];
-        // foreach ($roleIds as $roleId) {
-        //     $role = new Role($gDb, $roleId);
-        //     $roles[] = $role->readableName();
-        // }
-        return $roles;
-
-
+        return [];
     }
 
     /**

@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 
 use Admidio\Categories\Entity\Category;
-use Admidio\Events\Entity\Event;
 use Admidio\Users\Entity\User;
 use Sabre\CalDAV\Backend\AbstractBackend;
 use Sabre\CalDAV\Backend\SyncSupport;
 use Sabre\CalDAV\Backend\SubscriptionSupport;
 use Sabre\CalDAV\Backend\SchedulingSupport;
 use Sabre\CalDAV\Backend\SharingSupport;
+use Sabre\CalDAV\Plugin;
+use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
+use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Sabre\DAV;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\PropPatch;
