@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 
 use Admidio\Categories\Entity\Category;
+use Admidio\Events\ValueObject\Participants;
 use Admidio\Roles\Entity\ListConfiguration;
 use Admidio\Roles\Entity\Role;
 use Admidio\Events\Entity\Event;
@@ -11,6 +12,7 @@ use Admidio\Roles\ValueObject\ListData;
 use Admidio\Users\Entity\User;
 use Eluceo\iCal\Domain\Entity\Attendee;
 use Eluceo\iCal\Domain\ValueObject\EmailAddress;
+use Eluceo\iCal\Domain\ValueObject\Organizer;
 use Sabre\CalDAV\Backend\AbstractBackend;
 use Sabre\CalDAV\Backend\SyncSupport;
 use Sabre\CalDAV\Backend\SubscriptionSupport;
@@ -19,9 +21,9 @@ use Sabre\CalDAV\Backend\SharingSupport;
 use Sabre\CalDAV\Plugin;
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
-use Sabre\DAV;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\PropPatch;
+use Sabre\VObject;
 
 /**
  * PDO CalDAV backend.
@@ -190,7 +192,8 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateCalendar($calendarUuid, PropPatch $propPatch)
     {
-        throw new NotImplemented('Updating calendars is not yet supported');
+        return true;
+        // throw new NotImplemented('Updating calendars is not yet supported');
 
 
         // $supportedProperties = array_keys($this->propertyMap);
@@ -232,7 +235,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function deleteCalendar($calendarUuid)
     {
-        throw new NotImplemented('Deleting calendars is not yet supported');
+        // throw new NotImplemented('Deleting calendars is not yet supported');
 
 
         // $stmt = $this->pdo->prepare('SELECT access FROM '.$this->calendarInstancesTableName.' where id = ?');
@@ -391,21 +394,21 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
                 $participants = new Participants($gDb, $roleId);
                 $participantsArray = $participants->getParticipantsArray();
 
-            $attendees = [];
+                $attendees = [];
                 foreach ($participantsArray as $participant) {
                     $user = new User($gDb, userId: $participant['usrId']);
                     $email = new EmailAddress($user->getValue('EMAIL') ?: 'unknown@example.com');
-                $attendee = new Attendee($email);
+                    $attendee = new Attendee($email);
                     $attendee->setParticipationStatus($this->mapParticipationStatus($participant["approved"]));
                     $displayName = trim($user->getValue('FIRST_NAME') . ' ' . $user->getValue('LAST_NAME'));
                     $attendee->setDisplayName($displayName);
-                $attendees[] = $attendee;
+                    $attendees[] = $attendee;
                     if ($participant["leader"]) {
                         $organizer = new Organizer($email);
                         $iCalEvent->setOrganizer($organizer); // iCal only allows one organizer per event
-            }
+                    }
                 }
-            $iCalEvent->setAttendees($attendees);
+                $iCalEvent->setAttendees($attendees);
             }
             $attendeesLastModified = $this->getParticipantChangeDate($roleId);
             if ($attendeesLastModified > $lastModified) {
@@ -471,7 +474,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function createCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
-        throw new NotImplemented('Creating calendar objects is not yet supported');
+        // throw new NotImplemented('Creating calendar objects is not yet supported');
 
 
 
@@ -493,6 +496,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         // $this->addChange($calendarUuid, $objectUri, 1);
 
         // return '"'.$extraData['etag'].'"';
+        return null;
     }
 
     /**
@@ -516,16 +520,14 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
-        throw new NotImplemented('Updating calendar objects is not yet supported');
-
-        // $extraData = $this->getDenormalizedData($calendarData);
+        $extraData = $this->getDenormalizedData($calendarData);
 
         // $stmt = $this->pdo->prepare('UPDATE '.$this->calendarObjectTableName.' SET calendardata = ?, lastmodified = ?, etag = ?, size = ?, componenttype = ?, firstoccurence = ?, lastoccurence = ?, uid = ? WHERE calendarid = ? AND uri = ?');
         // $stmt->execute([$calendarData, time(), $extraData['etag'], $extraData['size'], $extraData['componentType'], $extraData['firstOccurence'], $extraData['lastOccurence'], $extraData['uid'], $calendarUuid, $objectUri]);
 
-        // $this->addChange($calendarUuid, $objectUri, 2);
+        $this->addChange($calendarUuid, $objectUri, 2);
 
-        // return '"'.$extraData['etag'].'"';
+        return null;
     }
 
     /**
@@ -546,76 +548,74 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     protected function getDenormalizedData($calendarData)
     {
-        throw new NotImplemented('Getting denormalized data is not yet supported');
+        $vObject = VObject\Reader::read($calendarData);
+        $componentType = null;
+        $component = null;
+        $firstOccurence = null;
+        $lastOccurence = null;
+        $uid = null;
+        foreach ($vObject->getComponents() as $component) {
+            if ('VTIMEZONE' !== $component->name) {
+                $componentType = $component->name;
+                $uid = (string) $component->UID;
+                break;
+            }
+        }
+        if (!$componentType) {
+            throw new \Sabre\DAV\Exception\BadRequest('Calendar objects must have a VJOURNAL, VEVENT or VTODO component');
+        }
+        if ('VEVENT' === $componentType) {
+            $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
+            // Finding the last occurence is a bit harder
+            if (!isset($component->RRULE)) {
+                if (isset($component->DTEND)) {
+                    $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
+                } elseif (isset($component->DURATION)) {
+                    $endDate = clone $component->DTSTART->getDateTime();
+                    $endDate = $endDate->add(VObject\DateTimeParser::parse($component->DURATION->getValue()));
+                    $lastOccurence = $endDate->getTimeStamp();
+                } elseif (!$component->DTSTART->hasTime()) {
+                    $endDate = clone $component->DTSTART->getDateTime();
+                    $endDate = $endDate->modify('+1 day');
+                    $lastOccurence = $endDate->getTimeStamp();
+                } else {
+                    $lastOccurence = $firstOccurence;
+                }
+            } else {
+                $it = new VObject\Recur\EventIterator($vObject, (string) $component->UID);
+                $maxDate = new \DateTime(self::MAX_DATE);
+                if ($it->isInfinite()) {
+                    $lastOccurence = $maxDate->getTimeStamp();
+                } else {
+                    $end = $it->getDtEnd();
+                    while ($it->valid() && $end < $maxDate) {
+                        $end = $it->getDtEnd();
+                        $it->next();
+                    }
+                    $lastOccurence = $end->getTimeStamp();
+                }
+            }
 
-        // $vObject = VObject\Reader::read($calendarData);
-        // $componentType = null;
-        // $component = null;
-        // $firstOccurence = null;
-        // $lastOccurence = null;
-        // $uid = null;
-        // foreach ($vObject->getComponents() as $component) {
-        //     if ('VTIMEZONE' !== $component->name) {
-        //         $componentType = $component->name;
-        //         $uid = (string) $component->UID;
-        //         break;
-        //     }
-        // }
-        // if (!$componentType) {
-        //     throw new \Sabre\DAV\Exception\BadRequest('Calendar objects must have a VJOURNAL, VEVENT or VTODO component');
-        // }
-        // if ('VEVENT' === $componentType) {
-        //     $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
-        //     // Finding the last occurence is a bit harder
-        //     if (!isset($component->RRULE)) {
-        //         if (isset($component->DTEND)) {
-        //             $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
-        //         } elseif (isset($component->DURATION)) {
-        //             $endDate = clone $component->DTSTART->getDateTime();
-        //             $endDate = $endDate->add(VObject\DateTimeParser::parse($component->DURATION->getValue()));
-        //             $lastOccurence = $endDate->getTimeStamp();
-        //         } elseif (!$component->DTSTART->hasTime()) {
-        //             $endDate = clone $component->DTSTART->getDateTime();
-        //             $endDate = $endDate->modify('+1 day');
-        //             $lastOccurence = $endDate->getTimeStamp();
-        //         } else {
-        //             $lastOccurence = $firstOccurence;
-        //         }
-        //     } else {
-        //         $it = new VObject\Recur\EventIterator($vObject, (string) $component->UID);
-        //         $maxDate = new \DateTime(self::MAX_DATE);
-        //         if ($it->isInfinite()) {
-        //             $lastOccurence = $maxDate->getTimeStamp();
-        //         } else {
-        //             $end = $it->getDtEnd();
-        //             while ($it->valid() && $end < $maxDate) {
-        //                 $end = $it->getDtEnd();
-        //                 $it->next();
-        //             }
-        //             $lastOccurence = $end->getTimeStamp();
-        //         }
-        //     }
+            // Ensure Occurence values are positive
+            if ($firstOccurence < 0) {
+                $firstOccurence = 0;
+            }
+            if ($lastOccurence < 0) {
+                $lastOccurence = 0;
+            }
+        }
 
-        //     // Ensure Occurence values are positive
-        //     if ($firstOccurence < 0) {
-        //         $firstOccurence = 0;
-        //     }
-        //     if ($lastOccurence < 0) {
-        //         $lastOccurence = 0;
-        //     }
-        // }
+        // Destroy circular references to PHP will GC the object.
+        $vObject->destroy();
 
-        // // Destroy circular references to PHP will GC the object.
-        // $vObject->destroy();
-
-        // return [
-        //     'etag' => md5($calendarData),
-        //     'size' => strlen($calendarData),
-        //     'componentType' => $componentType,
-        //     'firstOccurence' => $firstOccurence,
-        //     'lastOccurence' => $lastOccurence,
-        //     'uid' => $uid,
-        // ];
+        return [
+            'etag' => md5($calendarData),
+            'size' => strlen($calendarData),
+            'componentType' => $componentType,
+            'firstOccurence' => $firstOccurence,
+            'lastOccurence' => $lastOccurence,
+            'uid' => $uid,
+        ];
     }
 
     /**
@@ -628,7 +628,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function deleteCalendarObject($calendarUuid, $objectUri)
     {
-        throw new NotImplemented('Deleting calendar objects is not yet supported');
+        // throw new NotImplemented('Deleting calendar objects is not yet supported');
 
 
 
@@ -786,30 +786,16 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getCalendarObjectByUID($principalUri, $uid)
     {
-        throw new NotImplemented('Getting calendar objects by UID is not yet supported');
+        global $gDb;
 
-        //         $query = <<<SQL
-// SELECT
-//     calendar_instances.uri AS calendaruri, calendarobjects.uri as objecturi
-// FROM
-//     $this->calendarObjectTableName AS calendarobjects
-// LEFT JOIN
-//     $this->calendarInstancesTableName AS calendar_instances
-//     ON calendarobjects.calendarid = calendar_instances.calendarid
-// WHERE
-//     calendar_instances.principaluri = ?
-//     AND
-//     calendarobjects.uid = ?
-//     AND
-//     calendar_instances.access = 1
-// SQL;
+        $eventUuid = str_replace('.ics', '', $uid);
 
-        //         $stmt = $this->pdo->prepare($query);
-//         $stmt->execute([$principalUri, $uid]);
+        $event = new Event($gDb);
+        $event->readDataByUuid($eventUuid);
 
-        //         if ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-//             return $row['calendaruri'].'/'.$row['objecturi'];
-//         }
+        $calendar = new Category($gDb, $event->getValue('dat_cat_id'));
+
+        return $calendar->getValue('cat_uuid') . '/' . $eventUuid . '.ics';
     }
 
     /**
@@ -961,7 +947,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     protected function addChange($calendarUuid, $objectUri, $operation)
     {
-        throw new NotImplemented('Adding changes is not yet supported');
+        // throw new NotImplemented('Adding changes is not yet supported');
 
         // $stmt = $this->pdo->prepare('INSERT INTO '.$this->calendarChangesTableName.' (uri, synctoken, calendarid, operation) SELECT ?, synctoken, ?, ? FROM '.$this->calendarTableName.' WHERE id = ?');
         // $stmt->execute([
@@ -1059,7 +1045,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function createSubscription($principalUri, $uri, array $properties)
     {
-        throw new NotImplemented('Creating subscriptions is not yet supported');
+        // throw new NotImplemented('Creating subscriptions is not yet supported');
 
         // $fieldNames = [
         //     'principaluri',
@@ -1110,7 +1096,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function updateSubscription($subscriptionId, PropPatch $propPatch)
     {
-        throw new NotImplemented('Updating subscriptions is not yet supported');
+        // throw new NotImplemented('Updating subscriptions is not yet supported');
 
         // $supportedProperties = array_keys($this->subscriptionPropertyMap);
         // $supportedProperties[] = '{http://calendarserver.org/ns/}source';
@@ -1149,7 +1135,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function deleteSubscription($subscriptionId)
     {
-        throw new NotImplemented('Deleting subscriptions is not yet supported');
+        // throw new NotImplemented('Deleting subscriptions is not yet supported');
 
         // $stmt = $this->pdo->prepare('DELETE FROM '.$this->calendarSubscriptionsTableName.' WHERE id = ?');
         // $stmt->execute([$subscriptionId]);
@@ -1229,7 +1215,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function deleteSchedulingObject($principalUri, $objectUri)
     {
-        throw new NotImplemented('Deleting scheduling object is not yet supported');
+        // throw new NotImplemented('Deleting scheduling object is not yet supported');
 
         // $stmt = $this->pdo->prepare('DELETE FROM '.$this->schedulingObjectTableName.' WHERE principaluri = ? AND uri = ?');
         // $stmt->execute([$principalUri, $objectUri]);
@@ -1244,7 +1230,7 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function createSchedulingObject($principalUri, $objectUri, $objectData)
     {
-        throw new NotImplemented('Creating scheduling objects is not yet supported');
+        // throw new NotImplemented('Creating scheduling objects is not yet supported');
 
         // $stmt = $this->pdo->prepare('INSERT INTO '.$this->schedulingObjectTableName.' (principaluri, calendardata, uri, lastmodified, etag, size) VALUES (?, ?, ?, ?, ?, ?)');
 
@@ -1408,6 +1394,6 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function setPublishStatus($calendarUuid, $value)
     {
-        throw new DAV\Exception\NotImplemented('Not implemented');
+        // throw new DAV\Exception\NotImplemented('Not implemented');
     }
 }
