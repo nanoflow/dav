@@ -309,12 +309,20 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
 
         $result = [];
         foreach ($eventsResult['recordset'] as $event) {
-            $lastModified = $event['dat_timestamp_change'] ?? $event['dat_timestamp_create'];
+            $lastModified = new DateTime($event['dat_timestamp_change'] ?? $event['dat_timestamp_create']);
+            if ($event['dat_rol_id']) {
+                $role = new Role($gDb, $event['dat_rol_id']);
+                $attendeesLastModified = $this->getParticipantChangeDate($role->getValue('rol_uuid'));
+                if ($attendeesLastModified > $lastModified) {
+                    $lastModified = $attendeesLastModified;
+                }
+            }
+
             $result[] = [
                 'id' => $event['dat_id'],
                 'uri' => $event['dat_uuid'] . '.ics',
-                'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
-                'etag' => md5($lastModified),
+                'lastmodified' => $lastModified->getTimestamp(),
+                // 'etag' => md5($lastModified->format('c')),
                 'component' => strtolower('VEVENT'),
             ];
         }
@@ -341,36 +349,26 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
      */
     public function getCalendarObject($calendarUuid, $objectUri)
     {
-        global $gDb, $gProfileFields;
+        global $gDb, $gCurrentUser;
 
         $calendar = new Category($gDb);
         $calendar->readDataByUuid($calendarUuid);
 
-        $eventId = str_replace('.ics', '', $objectUri);
-        $events = new ModuleEvents();
-        $events->setCalendarNames(arrCalendarNames: [$calendar->getValue('cat_name')]);
-        $events->setParameter('dat_uuid', $eventId);
-        $count = $events->getDataSetCount();
-        if ($count == 0) {
-            return null;
-        }
-        if ($count > 1) {
-            throw new Exception('Found more than one event with id ' . $eventId . '!');
-        }
-        $eventRecord = $events->getDataSet()['recordset'][0];
-        $lastModified = $eventRecord['dat_timestamp_change'] ?? $eventRecord['dat_timestamp_create'];
+        $eventUuid = str_replace('.ics', '', $objectUri);
 
         $event = new Event($gDb);
-        $event->setArray($eventRecord);
+        $event->readDataByUuid($eventUuid);
 
-        $iCalEvent = new Eluceo\iCal\Domain\Entity\Event(new Eluceo\iCal\Domain\ValueObject\UniqueIdentifier($eventRecord['dat_uuid']));
-        $iCalEvent->setSummary($eventRecord['dat_headline']);
-        $iCalEvent->setDescription((string) $eventRecord['dat_description']);
-        $iCalEvent->setLocation(new \Eluceo\iCal\Domain\ValueObject\Location((string) $eventRecord['dat_location']));
+        $lastModified = new DateTime($event->getValue('dat_timestamp_change') ?? $event->getValue('dat_timestamp_create'));
 
-        $iCalEvent->touch(new Eluceo\iCal\Domain\ValueObject\Timestamp(new DateTimeImmutable($lastModified)));
+        $iCalEvent = new Eluceo\iCal\Domain\Entity\Event(new Eluceo\iCal\Domain\ValueObject\UniqueIdentifier($eventUuid));
+        $iCalEvent->setSummary($event->getValue('dat_headline'));
+        $iCalEvent->setDescription(strip_tags($event->getValue('dat_description')));
+        $iCalEvent->setLocation(new \Eluceo\iCal\Domain\ValueObject\Location($event->getValue('dat_location')));
 
-        if ($eventRecord['dat_all_day'] === true) {
+        $iCalEvent->touch(new Eluceo\iCal\Domain\ValueObject\Timestamp(new DateTimeImmutable($lastModified->format('c'))));
+
+        if ($event->getValue('dat_all_day')) {
             if ($event->getValue('dat_begin', 'Y-m-d') === $event->getValue('dat_end', 'Y-m-d')) {
                 $iCalEvent->setOccurrence(new \Eluceo\iCal\Domain\ValueObject\SingleDay(
                     new \Eluceo\iCal\Domain\ValueObject\Date(new DateTimeImmutable($event->getValue('dat_begin', 'Y-m-d')))
@@ -388,21 +386,31 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
             ));
         }
         if ($event->allowedToParticipate()) {
-            $role = new Role($gDb, $eventRecord['dat_rol_id']);
-            $list = new ListConfiguration($gDb);
-            $list->addColumn((int) $gProfileFields->getProperty('EMAIL', 'usf_id'));
-            $listData = new ListData();
-            $listData->setDataByConfiguration($list, ['showRolesMembers' => [$role->getValue('rol_uuid')], 'showUserUUID' => true]);
-            $members = $listData->getData();
+            $roleId = (int) $event->getValue('dat_rol_id');
+            if ($gCurrentUser->hasRightViewRole($roleId)) {
+                $participants = new Participants($gDb, $roleId);
+                $participantsArray = $participants->getParticipantsArray();
 
             $attendees = [];
-            foreach ($members as $member) {
-                $email = new EmailAddress($member['EMAIL']);
+                foreach ($participantsArray as $participant) {
+                    $user = new User($gDb, userId: $participant['usrId']);
+                    $email = new EmailAddress($user->getValue('EMAIL') ?: 'unknown@example.com');
                 $attendee = new Attendee($email);
+                    $attendee->setParticipationStatus($this->mapParticipationStatus($participant["approved"]));
+                    $displayName = trim($user->getValue('FIRST_NAME') . ' ' . $user->getValue('LAST_NAME'));
+                    $attendee->setDisplayName($displayName);
                 $attendees[] = $attendee;
+                    if ($participant["leader"]) {
+                        $organizer = new Organizer($email);
+                        $iCalEvent->setOrganizer($organizer); // iCal only allows one organizer per event
             }
-
+                }
             $iCalEvent->setAttendees($attendees);
+            }
+            $attendeesLastModified = $this->getParticipantChangeDate($roleId);
+            if ($attendeesLastModified > $lastModified) {
+                $lastModified = $attendeesLastModified;
+            }
         }
 
         $calendar = new Eluceo\iCal\Domain\Entity\Calendar([$iCalEvent]);
@@ -410,10 +418,10 @@ class AdmCalendarBackend extends AbstractBackend implements SyncSupport, Subscri
         $calendarData = strval($componentFactory->createCalendar($calendar));
 
         return [
-            'id' => $eventRecord['dat_id'],
-            'uri' => $eventRecord['dat_uuid'] . '.ics',
-            'lastmodified' => (int) (new DateTime($lastModified))->getTimestamp(),
-            'etag' => md5($lastModified),
+            'id' => $event->getValue('dat_id'),
+            'uri' => $event->getValue('dat_uuid') . '.ics',
+            'lastmodified' => (int) $lastModified->getTimestamp(),
+            // 'etag' => md5($lastModified),
             'calendardata' => $calendarData,
             'component' => strtolower('VEVENT'),
         ];
