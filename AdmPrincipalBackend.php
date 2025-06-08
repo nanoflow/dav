@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use Admidio\Roles\Entity\Role;
 use Sabre\DAV;
 use Sabre\DAVACL\PrincipalBackend\AbstractBackend;
-use Sabre\DAVACL\PrincipalBackend\CreatePrincipalSupport;
 use Sabre\DAV\Exception\NotImplemented;
-use Sabre\DAV\MkCol;
 
 use Admidio\Roles\Entity\ListConfiguration;
 use Admidio\Roles\ValueObject\ListData;
@@ -27,7 +24,7 @@ require_once($rootPath . '/adm_program/system/common.php');
  * @author Evert Pot (http://evertpot.com/)
  * @license http://sabre.io/license/ Modified BSD License
  */
-class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupport
+class AdmPrincipalBackend extends AbstractBackend
 {
     use AdmBackendFunctions;
 
@@ -150,7 +147,7 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function searchPrincipals($prefixPath, array $searchProperties, $test = 'allof')
     {
-        throw new NotImplemented('Searching principals is not yet supported');
+        throw new NotImplemented('Searching principals is not supported');
     }
 
     /**
@@ -173,7 +170,7 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function findByUri($uri, $principalPrefix)
     {
-        throw new NotImplemented('Finding principals by uri is not yet supported');
+        throw new NotImplemented('Finding principals by uri is not supported');
     }
 
     /**
@@ -209,20 +206,6 @@ class AdmPrincipalBackend extends AbstractBackend implements CreatePrincipalSupp
      */
     public function setGroupMemberSet($principal, array $members)
     {
-        throw new NotImplemented('Updating group members is not yet supported');
-    }
-
-    /**
-     * Creates a new principal.
-     *
-     * This method receives a full path for the new principal. The mkCol object
-     * contains any additional webdav properties specified during the creation
-     * of the principal.
-     *
-     * @param string $path
-     */
-    public function createPrincipal($path, MkCol $mkCol)
-    {
-        throw new NotImplemented('Creating principals is not yet supported');
+        throw new NotImplemented('Updating group members is not supported');
     }
 }
