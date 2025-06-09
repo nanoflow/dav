@@ -13,13 +13,9 @@ use Admidio\Roles\Entity\Role;
 
 
 /**
- * PDO CardDAV backend.
- *
- * @copyright Copyright (C) fruux GmbH (https://fruux.com/)
- * @author Evert Pot (http://evertpot.com/)
- * @license http://sabre.io/license/ Modified BSD License
+ * Admidio CardDAV backend.
  */
-class AdmCarddavBackend extends AbstractBackend implements SyncSupport
+class AdmCarddavBackend extends AbstractBackend
 {
     use AdmBackendFunctions;
 
@@ -51,20 +47,12 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
                 }
                 $roleUuid = $role->getValue('rol_uuid');
 
-                // Current synctoken
-                // $roleId = $role->getValue('rol_id');
-                // $lastMembershipChange = $this->getLastMembershipChangeDate($roleId)->getTimestamp();
-                // $lastCardChange = $this->getLastCardChangeDate($roleId)->getTimestamp();
-                // $currentSyncToken = max($lastMembershipChange, $lastCardChange);
-
                 $addressBook = [
                     'id' => $roleUuid,
                     'uri' => $roleUuid,
                     'principaluri' => $principalUri,
                     '{DAV:}displayname' => $role->getValue('rol_name'),
                     '{' . CardDAV\Plugin::NS_CARDDAV . '}addressbook-description' => $role->getValue('rol_description'),
-                    // '{http://calendarserver.org/ns/}getctag' => md5($roleUuid . $currentSyncToken),
-                    // '{http://sabredav.org/ns}sync-token' => $currentSyncToken,
                 ];
                 $addressBooks[] = $addressBook;
             }
@@ -293,103 +281,5 @@ class AdmCarddavBackend extends AbstractBackend implements SyncSupport
     public function deleteCard($addressBookUuid, $cardUri)
     {
         throw new NotImplemented('Deleting cards is not supported');
-    }
-
-    /**
-     * The getChanges method returns all the changes that have happened, since
-     * the specified syncToken in the specified address book.
-     *
-     * This function should return an array, such as the following:
-     *
-     * [
-     *   'syncToken' => 'The current synctoken',
-     *   'added'   => [
-     *      'new.txt',
-     *   ],
-     *   'modified'   => [
-     *      'updated.txt',
-     *   ],
-     *   'deleted' => [
-     *      'foo.php.bak',
-     *      'old.txt'
-     *   ]
-     * ];
-     *
-     * The returned syncToken property should reflect the *current* syncToken
-     * of the addressbook, as reported in the {http://sabredav.org/ns}sync-token
-     * property. This is needed here too, to ensure the operation is atomic.
-     *
-     * If the $syncToken argument is specified as null, this is an initial
-     * sync, and all members should be reported.
-     *
-     * The modified property is an array of nodenames that have changed since
-     * the last token.
-     *
-     * The deleted property is an array with nodenames, that have been deleted
-     * from collection.
-     *
-     * The $syncLevel argument is basically the 'depth' of the report. If it's
-     * 1, you only have to report changes that happened only directly in
-     * immediate descendants. If it's 2, it should also include changes from
-     * the nodes below the child collections. (grandchildren)
-     *
-     * The $limit argument allows a client to specify how many results should
-     * be returned at most. If the limit is not specified, it should be treated
-     * as infinite.
-     *
-     * If the limit (infinite or not) is higher than you're willing to return,
-     * you should throw a Sabre\DAV\Exception\TooMuchMatches() exception.
-     *
-     * If the syncToken is expired (due to data cleanup) or unknown, you must
-     * return null.
-     *
-     * The limit is 'suggestive'. You are free to ignore it.
-     *
-     * @param string $addressBookUuid
-     * @param string $syncToken
-     * @param int    $syncLevel
-     * @param int    $limit
-     *
-     * @return array|null
-     */
-    public function getChangesForAddressBook($addressBookUuid, $syncToken, $syncLevel, $limit = null)
-    {
-        // global $gDb;
-
-        // $role = new Role($gDb);
-        // $role->readDataByUuid($addressBookUuid);
-        // $roleId = $role->getValue('rol_id');
-
-        // $lastMembershipChange = $this->getLastMembershipChangeDate($role->getValue('rol_id'))->getTimestamp();
-        // $lastCardChange = $this->getLastCardChangeDate($role->getValue('rol_id'))->getTimestamp();
-
-        // // Current synctoken
-        // $currentToken = max($lastMembershipChange, $lastCardChange);
-
-        // if (is_null($currentToken) || $currentToken < $syncToken) {
-            return null;
-        // }
-
-        // $result = [
-        //     'syncToken' => $currentToken,
-        //     'added' => [],
-        //     'modified' => [],
-        //     'deleted' => [],
-        // ];
-
-        // if ($syncToken) {
-        //     if ($syncToken < $lastMembershipChange) {
-        //         $result['added'] = $this->getAddedUsersToRoleSince($roleId, $syncToken);
-        //         $result['deleted'] = $this->getDeletedUsersFromRoleSince($roleId, $syncToken);
-        //     }
-        //     if ($syncToken < $lastCardChange) {
-        //         $result['modified'] = $this->getModifiedUsersInRoleSince($roleId, $syncToken);
-        //     }
-        // } else {
-        //     // No synctoken supplied, this is the initial sync.
-        //     $result['added'] = $this->getAddedUsersToRoleSince($roleId, 0);
-        // }
-
-        // return $result;
     }
 }

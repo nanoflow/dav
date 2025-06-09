@@ -14,14 +14,9 @@ $rootPath = dirname(dirname(__DIR__));
 $pluginFolder = basename(__DIR__);
 
 /**
- * PDO principal backend.
+ * Admidio principal backend.
  *
- * This backend assumes all principals are in a single collection. The default collection
- * is 'principals/', but this can be overridden.
- *
- * @copyright Copyright (C) fruux GmbH (https://fruux.com/)
- * @author Evert Pot (http://evertpot.com/)
- * @license http://sabre.io/license/ Modified BSD License
+ * This backend provides the users with a login to admidio as principals for Sabre DAV.
  */
 class AdmPrincipalBackend extends AbstractBackend
 {

@@ -5,10 +5,7 @@ use Admidio\Users\Entity\User;
 
 
 /**
- * This is an authentication backend that uses a database to manage passwords.
- *
- * @copyright Copyright (C) fruux GmbH (https://fruux.com/)
- * @license http://sabre.io/license/ Modified BSD License
+ * This is an Admidio authentication backend for Sabre DAV.
  */
 
 $rootPath = dirname(__DIR__, 2);

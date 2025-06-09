@@ -20,14 +20,9 @@ use Sabre\DAV\Exception\NotImplemented;
 
 
 /**
- * PDO CalDAV backend.
+ * Admidio CalDAV backend.
  *
- * This backend is used to store calendar-data in a PDO database, such as
- * sqlite or MySQL
- *
- * @copyright Copyright (C) fruux GmbH (https://fruux.com/)
- * @author Evert Pot (http://evertpot.com/)
- * @license http://sabre.io/license/ Modified BSD License
+ * This backend is used to connect Sabre DAV to Admidio.
  */
 class AdmCalendarBackend extends AbstractBackend
 {
