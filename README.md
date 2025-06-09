@@ -10,6 +10,7 @@ Unzip the dav plugin into the adm_plugins folder of your admidio installation.
 
 - Clone the repository into the adm_plugins folder
 - run `composer install` inside the cloned repository
+- if you don't have composer installed you can unzip the vendor.zip file alternatively.
 
 ## Service Discovery:
 
@@ -40,6 +41,19 @@ Further information in the [Sabre documentation](https://sabre.io/dav/)
 
 ### CalDAV (calendars):
 
+#### iOS (18.5)
+
+- Settings/Apps/Calendar/Calendar Accounts
+- Add Account
+- Other
+- Add CalDAV Account
+- Enter the following information
+  - Server: URL of your Admidio Installation (including https://)
+  - User: your Admidio User Name (take care of upper/lower case)
+  - Password: Your Admidio Password
+  - Description: The Name you want to give the calendar
+- Next
+
 #### MacOS Calendar (Sequoia 15.5):
 
 - open the calendar app
@@ -47,7 +61,7 @@ Further information in the [Sabre documentation](https://sabre.io/dav/)
 - select Other CalDAV Account
 - Enter the following information
   - Account Type: Manual
-  - Username: Your Admidio User Name ()
+  - Username: Your Admidio User Name (take care of upper/lower case)
   - Password: Your Admidio Password
   - Server Address: URL of your Admidio Installation (including https://)
 - Sign In
@@ -68,6 +82,19 @@ Further information in the [Sabre documentation](https://sabre.io/dav/)
 
 ### CardDAV (contacts):
 
+#### iOS (18.5)
+
+- Settings/Apps/Contacts/Contact Accounts
+- Add Account
+- Other
+- Add CardDAV Account
+- Enter the following information
+  - Server: URL of your Admidio Installation (including https://)
+  - User: your Admidio User Name (take care of upper/lower case)
+  - Password: Your Admidio Password
+  - Description: The name you want to give this addressbook collection
+- Next
+
 #### MacOS Contacts
 
 - Contacts/Add Account
@@ -75,7 +102,7 @@ Further information in the [Sabre documentation](https://sabre.io/dav/)
 - Enter the following information
   - CardDAV
   - Account Type: Manual
-  - Username: Your Admidio User Name
+  - Username: Your Admidio User Name (take care of upper/lower case)
   - Password: Your Admidio Password
   - Server Address: URL of your Admidio Installation (including https://)
 - Only one addressbook is addedto the Contacts App, this is a known limitation of MacOS Contacts App
@@ -85,7 +112,7 @@ Further information in the [Sabre documentation](https://sabre.io/dav/)
 - Open the thunderbird address book
 - Add CardDAV Address Book
 - Enter the following information:
-  - Username: Your Admidio User Name
+  - Username: Your Admidio User Name (take care of upper/lower case)
   - Location: URL of your Admidio Installation
   - Click 'Continue'
 - Enter your Admidio username and password when asked for it
