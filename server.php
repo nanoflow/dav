@@ -23,11 +23,6 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 require_once 'vendor/autoload.php';
 
 // Backends
-// $authBackend = new Sabre\DAV\Auth\Backend\PDO($pdo);
-// $principalBackend = new Sabre\DAVACL\PrincipalBackend\PDO($pdo);
-// $carddavBackend = new Sabre\CardDAV\Backend\PDO($pdo);
-// $caldavBackend = new Sabre\CalDAV\Backend\PDO($pdo);
-
 include 'AdmBasicAuthBackend.php';
 $authBackend = new AdmBasicAuthBackend();
 include 'AdmPrincipalBackend.php';
@@ -35,12 +30,12 @@ $principalBackend = new AdmPrincipalBackend();
 include 'AdmCarddavBackend.php';
 $carddavBackend = new AdmCarddavBackend();
 include 'AdmCalendarBackend.php';
-$caldavBackend = new AdmCalendarBackend();
+$calendarBackend = new AdmCalendarBackend();
 
 // Setting up the directory tree //
 $nodes = [
-    new Sabre\DAVACL\PrincipalCollection($principalBackend),
-    new Sabre\CalDAV\CalendarRoot($principalBackend, $caldavBackend),
+    new Sabre\CalDAV\Principal\Collection($principalBackend),
+    new Sabre\CalDAV\CalendarRoot($principalBackend, $calendarBackend),
     new Sabre\CardDAV\AddressBookRoot($principalBackend, $carddavBackend),
 ];
 
@@ -49,12 +44,23 @@ $server = new Sabre\DAV\Server($nodes);
 $server->setBaseUri($baseUri);
 
 // Plugins
-$server->addPlugin(new Sabre\DAV\Auth\Plugin($authBackend));
-$server->addPlugin(new Sabre\DAV\Browser\Plugin());
-$server->addPlugin(new Sabre\CalDAV\Plugin());
+/* Server Plugins */
+$authPlugin = new Sabre\DAV\Auth\Plugin($authBackend);
+$server->addPlugin($authPlugin);
+
+$aclPlugin = new Sabre\DAVACL\Plugin();
+$server->addPlugin($aclPlugin);
+
+/* CalDAV support */
+$caldavPlugin = new Sabre\CalDAV\Plugin();
+$server->addPlugin($caldavPlugin);
+
+/* CardDAV support */
 $server->addPlugin(new Sabre\CardDAV\Plugin());
-$server->addPlugin(new Sabre\DAVACL\Plugin());
-$server->addPlugin(new Sabre\DAV\Sync\Plugin());
+
+// Support for html frontend
+$browser = new Sabre\DAV\Browser\Plugin();
+$server->addPlugin($browser);
 
 // And off we go!
 $server->start();
