@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-
-use Admidio\Categories\Entity\Category;
-use Admidio\Events\ValueObject\Participants;
-use Admidio\Roles\Entity\Role;
-use Admidio\Events\Entity\Event;
-
-use Admidio\Users\Entity\User;
 use Eluceo\iCal\Domain\Entity\Attendee;
 use Eluceo\iCal\Domain\ValueObject\EmailAddress;
 use Eluceo\iCal\Domain\ValueObject\Organizer;
@@ -57,13 +50,13 @@ class AdmCalendarBackend extends AbstractBackend
     {
         global $gDb;
 
-        $user = new User($gDb, userId: $this->getUserId($principalUri));
+        $user = new User($gDb, null, $this->getUserId($principalUri));
         $user->checkRolesRight();
         $visibleCalendarIds = $user->getAllVisibleCategories('EVT');
 
         $calendars = [];
         foreach ($visibleCalendarIds as $calendarId) {
-            $calendar = new Category($gDb, $calendarId);
+            $calendar = new TableCategory($gDb, $calendarId);
             $calendarUuid = $calendar->getValue('cat_uuid');
             $calendarName = $calendar->getValue('cat_name');
 
@@ -142,17 +135,17 @@ class AdmCalendarBackend extends AbstractBackend
     {
         global $gDb;
 
-        $calendar = new Category($gDb);
+        $calendar = new TableCategory($gDb);
         $calendar->readDataByUuid($calendarUuid);
         $events = new ModuleEvents();
-        $events->setCalendarNames(arrCalendarNames: [$calendar->getValue('cat_name')]);
+        $events->setCalendarNames([$calendar->getValue('cat_name')]);
         $eventsResult = $events->getDataSet();
 
         $result = [];
         foreach ($eventsResult['recordset'] as $event) {
             $lastModified = new DateTime($event['dat_timestamp_change'] ?? $event['dat_timestamp_create']);
             if ($event['dat_rol_id']) {
-                $role = new Role($gDb, $event['dat_rol_id']);
+                $role = new TableRoles($gDb, $event['dat_rol_id']);
                 $attendeesLastModified = $this->getParticipantChangeDate($role->getValue('rol_uuid'));
                 if ($attendeesLastModified > $lastModified) {
                     $lastModified = $attendeesLastModified;
@@ -190,12 +183,12 @@ class AdmCalendarBackend extends AbstractBackend
     {
         global $gDb, $gCurrentUser;
 
-        $calendar = new Category($gDb);
+        $calendar = new TableCategory($gDb);
         $calendar->readDataByUuid($calendarUuid);
 
         $eventUuid = str_replace('.ics', '', $objectUri);
 
-        $event = new Event($gDb);
+        $event = new TableEvent($gDb);
         $event->readDataByUuid($eventUuid);
 
         $lastModified = new DateTime($event->getValue('dat_timestamp_change') ?? $event->getValue('dat_timestamp_create'));
@@ -232,7 +225,7 @@ class AdmCalendarBackend extends AbstractBackend
 
                 $attendees = [];
                 foreach ($participantsArray as $participant) {
-                    $user = new User($gDb, userId: $participant['usrId']);
+                    $user = new User($gDb, null, $participant['usrId']);
                     $email = new EmailAddress($user->getValue('EMAIL') ?: 'unknown@example.com');
                     $attendee = new Attendee($email);
                     $attendee->setParticipationStatus($this->mapParticipationStatus($participant["approved"]));
@@ -286,7 +279,7 @@ class AdmCalendarBackend extends AbstractBackend
      */
     public function createCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
-        throw new NotImplemented(message: 'Creating calendar objects is not supported');
+        throw new NotImplemented('Creating calendar objects is not supported');
     }
 
     /**
@@ -310,7 +303,7 @@ class AdmCalendarBackend extends AbstractBackend
      */
     public function updateCalendarObject($calendarUuid, $objectUri, $calendarData)
     {
-        throw new NotImplemented(message: 'Updating calendar objects is not supported');
+        throw new NotImplemented('Updating calendar objects is not supported');
     }
 
     /**

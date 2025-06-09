@@ -1,7 +1,5 @@
 <?php
 
-use Admidio\Events\ValueObject\Participants;
-use Admidio\Roles\Entity\Role;
 use Eluceo\iCal\Domain\Enum\ParticipationStatus;
 
 /**
@@ -9,7 +7,7 @@ use Eluceo\iCal\Domain\Enum\ParticipationStatus;
  */
 
 $rootPath = dirname(__DIR__, 2);
-require_once($rootPath . '/system/common.php');
+require_once($rootPath . '/adm_program/system/common.php');
 
 trait AdmBackendFunctions
 {
@@ -26,7 +24,7 @@ trait AdmBackendFunctions
     protected function getRoleId(string $roleUuid): int
     {
         global $gDb;
-        $role = new Role($gDb);
+        $role = new TableRoles($gDb);
         $role->readDataByUuid($roleUuid);
         return $role->getValue('rol_id');
     }
@@ -34,12 +32,12 @@ trait AdmBackendFunctions
     protected function mapParticipationStatus($admParticipationStatus): ParticipationStatus
     {
         switch ($admParticipationStatus) {
-            case Participants::PARTICIPATION_YES:
+            case ModuleEvents::MEMBER_APPROVAL_STATE_ATTEND:
                 return ParticipationStatus::ACCEPTED();
-            case Participants::PARTICIPATION_NO:
+            case ModuleEvents::MEMBER_APPROVAL_STATE_REFUSED:
                 return ParticipationStatus::DECLINED();
-            case Participants::PARTICIPATION_MAYBE:
-            case Participants::PARTICIPATION_UNKNOWN:
+            case ModuleEvents::MEMBER_APPROVAL_STATE_INVITED:
+            case ModuleEvents::MEMBER_APPROVAL_STATE_TENTATIVE:
                 return ParticipationStatus::TENTATIVE();
             default:
                 throw new ErrorException("could not map " . $admParticipationStatus . " to iCal status");
@@ -49,12 +47,17 @@ trait AdmBackendFunctions
     protected function getParticipantChangeDate($roleUuid): DateTime|null
     {
         global $gDb;
-        $sql = 'SELECT log_timestamp_create
-        FROM ' . TBL_LOG . '
-        WHERE log_related_id = ? 
-        ORDER BY log_timestamp_create desc
+
+        $role = new TableRoles($gDb);
+        $role->readDataByUuid($roleUuid);
+
+        global $gDb;
+        $sql = 'SELECT COALESCE(mem_timestamp_change,mem_timestamp_create ) AS latest_change
+        FROM ' . TBL_MEMBERS . '
+        WHERE mem_rol_id = ?
+        ORDER BY latest_change desc
         LIMIT 1';
-        $userStatement = $gDb->queryPrepared($sql, array($roleUuid));
+        $userStatement = $gDb->queryPrepared($sql, array($role->getValue('rol_id')));
         $changeDate = $userStatement->fetchColumn();
         if ($changeDate) {
             return new DateTime($changeDate);

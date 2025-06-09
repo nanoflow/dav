@@ -2,7 +2,8 @@
     "name": "admidio/sabre",
     "type": "project",
     "require": {
-        "sabre/dav": "^4.7"
+        "sabre/dav": "^4.7",
+        "eluceo/ical": "^2.14"
     },
     "authors": [
         {

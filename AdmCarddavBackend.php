@@ -5,11 +5,6 @@ use Sabre\CardDAV;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\PropPatch;
 
-use Admidio\Roles\Entity\ListConfiguration;
-use Admidio\Roles\ValueObject\ListData;
-use Admidio\Users\Entity\User;
-use Admidio\Roles\Entity\Role;
-
 
 /**
  * Admidio CardDAV backend.
@@ -30,16 +25,15 @@ class AdmCarddavBackend extends AbstractBackend
         global $gDb;
 
         $usrLoginName = str_replace('principals/', '', $principalUri);
-        $user = new User($gDb, userId: $this->getUserId($usrLoginName));
+        $user = new User($gDb, null, $this->getUserId($usrLoginName));
         $user->checkRolesRight();
-        $visibleRoleUuids = $user->getRolesViewMemberships();
+        $visibleRoleIds = $user->getRolesViewMemberships();
 
         $addressBooks = [];
 
-        if ($visibleRoleUuids) {
-            foreach ($visibleRoleUuids as $roleUuid) {
-                $role = new Role($gDb);
-                $role->readDataByUuid($roleUuid);
+        if ($visibleRoleIds) {
+            foreach ($visibleRoleIds as $roleId) {
+                $role = new TableRoles($gDb, $roleId);
                 $isEventRole = $role->getValue('cat_name_intern') === 'EVENTS';
                 if ($isEventRole) {
                     continue;
@@ -129,8 +123,11 @@ class AdmCarddavBackend extends AbstractBackend
         $list = new ListConfiguration($gDb);
         $list->addColumn('mem_usr_id');
 
+        $role = new TableRoles($gDb);
+        $role->readDataByUuid($addressbookUuid);
+
         $listData = new ListData();
-        $listData->setDataByConfiguration($list, ['showRolesMembers' => [$addressbookUuid], 'showUserUUID' => true]);
+        $listData->setDataByConfiguration($list, ['showRolesMembers' => [$role->getValue('rol_id')], 'showUserUUID' => true]);
 
         $members = $listData->getData();
 

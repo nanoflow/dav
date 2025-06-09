@@ -6,10 +6,6 @@ use Sabre\DAV;
 use Sabre\DAVACL\PrincipalBackend\AbstractBackend;
 use Sabre\DAV\Exception\NotImplemented;
 
-use Admidio\Roles\Entity\ListConfiguration;
-use Admidio\Roles\ValueObject\ListData;
-use Admidio\Users\Entity\User;
-
 $rootPath = dirname(dirname(__DIR__));
 $pluginFolder = basename(__DIR__);
 
@@ -51,7 +47,7 @@ class AdmPrincipalBackend extends AbstractBackend
         global $gDb;
 
         $list = new ListConfiguration($gDb);
-        $list->addColumn('usr_login_name', filter: 'Nicht leer');
+        $list->addColumn('usr_login_name', 0, '', 'Nicht leer');
 
         $listData = new ListData();
         $listData->setDataByConfiguration($list, []);
@@ -77,9 +73,9 @@ class AdmPrincipalBackend extends AbstractBackend
     {
         global $gDb;
 
-        $usrLoginName = explode(separator: '/', string: $path)[1]; // TODO review this
+        $usrLoginName = explode('/', $path)[1]; // TODO review this
 
-        $user = new User($gDb, userId: $this->getUserId($usrLoginName));
+        $user = new User($gDb, null, $this->getUserId($usrLoginName));
 
         $principal = [
             'id' => $user->getValue('usr_uuid'),

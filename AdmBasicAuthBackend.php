@@ -1,8 +1,6 @@
 <?php
 
 include 'AdmBackendFunctions.php';
-use Admidio\Users\Entity\User;
-
 
 /**
  * This is an Admidio authentication backend for Sabre DAV.
@@ -28,7 +26,7 @@ class AdmBasicAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
     public function validateUserPass($username, $password)
     {
         global $gDb, $gCurrentUser, $gCurrentUserId, $gCurrentUserUUID;
-        $user = new User($gDb, userId: $this->getUserId($username));
+        $user = new User($gDb, null, $this->getUserId($username));
 
         if ($user->checkLogin($password)) {
             $gCurrentUser = $user;
