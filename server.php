@@ -54,9 +54,9 @@ $server->addPlugin($caldavPlugin);
 /* CardDAV support */
 $server->addPlugin(new Sabre\CardDAV\Plugin());
 
-// Support for html frontend
-$browser = new Sabre\DAV\Browser\Plugin();
-$server->addPlugin($browser);
+// Support for html frontend - enable for debug purposes
+// $browser = new Sabre\DAV\Browser\Plugin();
+// $server->addPlugin($browser);
 
 // And off we go!
 $server->start();

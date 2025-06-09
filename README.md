@@ -30,6 +30,12 @@ Redirect 302 /.well-known/carddav /adm_plugins/dav/server.php
 Redirect 302 /.well-known/caldav /adm_plugins/dav/server.php
 ```
 
+### Debugging
+
+you can enable the Sabre DAV browser plugin for debuging in the dav/server.php file.
+
+Further information in the [Sabre documentation](https://sabre.io/dav/)
+
 ## Client configuration
 
 ### CalDAV (calendars):
