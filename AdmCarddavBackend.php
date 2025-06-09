@@ -1,7 +1,6 @@
 <?php
 
 use Sabre\CardDAV\Backend\AbstractBackend;
-use Sabre\CardDAV\Backend\SyncSupport;
 use Sabre\CardDAV;
 use Sabre\DAV\Exception\NotImplemented;
 use Sabre\DAV\PropPatch;

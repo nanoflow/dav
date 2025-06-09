@@ -15,10 +15,6 @@ date_default_timezone_set('Europe/Berlin');
 // This can be for example the root / or a complete path to your server script
 $baseUri = '/adm_plugins/dav/server.php';
 
-/* Database */
-$pdo = new PDO('sqlite:data/db.sqlite');
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
 // Autoloader
 require_once 'vendor/autoload.php';
 
