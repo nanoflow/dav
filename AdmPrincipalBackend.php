@@ -13,7 +13,6 @@ use Admidio\Users\Entity\User;
 $rootPath = dirname(dirname(__DIR__));
 $pluginFolder = basename(__DIR__);
 
-require_once($rootPath . '/adm_program/system/common.php');
 /**
  * PDO principal backend.
  *

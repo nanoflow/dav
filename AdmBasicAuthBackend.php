@@ -12,7 +12,6 @@ use Admidio\Users\Entity\User;
  */
 
 $rootPath = dirname(__DIR__, 2);
-require_once($rootPath . '/adm_program/system/common.php');
 
 class AdmBasicAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
 {

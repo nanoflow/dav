@@ -9,7 +9,7 @@ use Eluceo\iCal\Domain\Enum\ParticipationStatus;
  */
 
 $rootPath = dirname(__DIR__, 2);
-require_once($rootPath . '/adm_program/system/common.php');
+require_once($rootPath . '/system/common.php');
 
 trait AdmBackendFunctions
 {
